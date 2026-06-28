@@ -17,7 +17,8 @@ export const createExpense = async (
   category: 'Food' | 'Accommodation' | 'Transport' | 'Activities' | 'Other',
   paidBy: string,
   splitAmong: string[],
-  date: Date
+  date: Date,
+  customSplit?: Record<string, number>
 ): Promise<string> => {
   const expense = {
     description,
@@ -25,6 +26,7 @@ export const createExpense = async (
     category,
     paidBy,
     splitAmong,
+    customSplit,
     date: Timestamp.fromDate(date),
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
@@ -33,6 +35,8 @@ export const createExpense = async (
   const docRef = await addDoc(collection(db, 'trips', tripId, 'expenses'), expense);
   return docRef.id;
 };
+
+export const addExpense = createExpense;
 
 export const getTripExpenses = async (tripId: string): Promise<Expense[]> => {
   const querySnapshot = await getDocs(collection(db, 'trips', tripId, 'expenses'));
@@ -47,6 +51,7 @@ export const getTripExpenses = async (tripId: string): Promise<Expense[]> => {
       category: data.category,
       paidBy: data.paidBy,
       splitAmong: data.splitAmong,
+      customSplit: data.customSplit,
       date: data.date.toDate(),
       createdAt: data.createdAt.toDate(),
       updatedAt: data.updatedAt.toDate(),

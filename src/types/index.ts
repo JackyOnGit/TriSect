@@ -39,6 +39,7 @@ export interface Expense {
   category: 'Food' | 'Accommodation' | 'Transport' | 'Activities' | 'Other';
   paidBy: string;
   splitAmong: string[];
+  customSplit?: Record<string, number>;
   date: Date;
   createdAt: Date;
   updatedAt: Date;
