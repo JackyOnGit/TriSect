@@ -4,6 +4,7 @@ import { useAuth } from './hooks/useAuth';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import CreateTrip from './pages/CreateTrip';
 import NotFound from './pages/NotFound';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -32,6 +33,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/trip/new"
+            element={
+              <ProtectedRoute>
+                <CreateTrip />
               </ProtectedRoute>
             }
           />
