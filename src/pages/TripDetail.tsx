@@ -5,6 +5,7 @@ import { getTripById, getTripMembers } from '../services/trips';
 import { getTripExpenses } from '../services/expenses';
 import { calculateBalances, calculateSettlements } from '../services/settlement';
 import AddMemberModal from '../components/AddMemberModal';
+import DeleteExpenseModal from '../components/DeleteExpenseModal';
 import { Expense, Trip, TripMember } from '../types';
 
 const TripDetail: React.FC = () => {
@@ -18,6 +19,7 @@ const TripDetail: React.FC = () => {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+	const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
 
 	const refreshMembers = async () => {
 		if (!tripId) {
@@ -29,6 +31,19 @@ const TripDetail: React.FC = () => {
 			setMembers(latestMembers);
 		} catch (refreshError) {
 			console.error('Failed to refresh trip members:', refreshError);
+		}
+	};
+
+	const refreshExpenses = async () => {
+		if (!tripId) {
+			return;
+		}
+
+		try {
+			const latestExpenses = await getTripExpenses(tripId);
+			setExpenses(latestExpenses);
+		} catch (refreshError) {
+			console.error('Failed to refresh trip expenses:', refreshError);
 		}
 	};
 
@@ -103,6 +118,11 @@ const TripDetail: React.FC = () => {
 			style: 'currency',
 			currency: 'USD',
 		}).format(value);
+
+	const handleExpenseDeleted = async () => {
+		await refreshExpenses();
+		setExpenseToDelete(null);
+	};
 
 	if (authLoading || loading) {
 		return (
@@ -224,7 +244,21 @@ const TripDetail: React.FC = () => {
 											{formatDate(expense.date)}
 										</p>
 									</div>
-									<p className="text-lg font-bold text-gray-900">{formatCurrency(expense.amount)}</p>
+									<div className="flex items-center gap-3">
+										<p className="text-lg font-bold text-gray-900">{formatCurrency(expense.amount)}</p>
+										<button
+											onClick={() => navigate(`/trip/${trip.id}/expense/${expense.id}/edit`)}
+											className="text-sm font-medium text-blue-700 hover:text-blue-900"
+										>
+											Edit
+										</button>
+										<button
+											onClick={() => setExpenseToDelete(expense)}
+											className="text-sm font-medium text-red-700 hover:text-red-900"
+										>
+											Delete
+										</button>
+									</div>
 								</div>
 							))}
 						</div>
@@ -290,6 +324,14 @@ const TripDetail: React.FC = () => {
 					isOpen={isAddMemberModalOpen}
 					onClose={() => setIsAddMemberModalOpen(false)}
 					onMemberAdded={refreshMembers}
+				/>
+				<DeleteExpenseModal
+					expenseId={expenseToDelete?.id || ''}
+					tripId={trip.id}
+					expenseDescription={expenseToDelete?.description || ''}
+					isOpen={!!expenseToDelete}
+					onClose={() => setExpenseToDelete(null)}
+					onDeleted={handleExpenseDeleted}
 				/>
 			</main>
 		</div>

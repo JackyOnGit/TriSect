@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import CreateTrip from './pages/CreateTrip';
 import TripDetail from './pages/TripDetail';
 import EditTrip from './pages/EditTrip';
+import EditExpense from './pages/EditExpense';
 import NotFound from './pages/NotFound';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -67,6 +68,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <div className="min-h-screen flex items-center justify-center">Coming Soon</div>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/trip/:tripId/expense/:expenseId/edit"
+            element={
+              <ProtectedRoute>
+                <EditExpense />
               </ProtectedRoute>
             }
           />
