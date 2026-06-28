@@ -15,6 +15,8 @@ export interface Trip {
   description: string;
   startDate: Date;
   endDate: Date;
+  budget?: number;
+  currency?: string;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;

@@ -148,13 +148,23 @@ const TripDetail: React.FC = () => {
 							<h1 className="text-3xl font-bold text-gray-900">{trip.name}</h1>
 							<p className="text-gray-600 mt-2">{trip.description || 'No description provided.'}</p>
 						</div>
-						<div className="text-sm text-gray-600 bg-gray-100 rounded-lg px-4 py-3">
-							<p>
-								<span className="font-semibold text-gray-700">Start:</span> {formatDate(trip.startDate)}
-							</p>
-							<p>
-								<span className="font-semibold text-gray-700">End:</span> {formatDate(trip.endDate)}
-							</p>
+						<div className="flex flex-col items-start md:items-end gap-3">
+							{user?.uid === trip.createdBy && (
+								<button
+									onClick={() => navigate(`/trip/${trip.id}/edit`)}
+									className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+								>
+									Edit Trip
+								</button>
+							)}
+							<div className="text-sm text-gray-600 bg-gray-100 rounded-lg px-4 py-3">
+								<p>
+									<span className="font-semibold text-gray-700">Start:</span> {formatDate(trip.startDate)}
+								</p>
+								<p>
+									<span className="font-semibold text-gray-700">End:</span> {formatDate(trip.endDate)}
+								</p>
+							</div>
 						</div>
 					</div>
 				</section>

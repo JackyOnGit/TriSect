@@ -6,6 +6,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import CreateTrip from './pages/CreateTrip';
 import TripDetail from './pages/TripDetail';
+import EditTrip from './pages/EditTrip';
 import NotFound from './pages/NotFound';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -50,6 +51,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <TripDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/trip/:tripId/edit"
+            element={
+              <ProtectedRoute>
+                <EditTrip />
               </ProtectedRoute>
             }
           />
