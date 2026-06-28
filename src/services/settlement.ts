@@ -95,6 +95,20 @@ export const calculateBalances = (
 ): Map<string, { spent: number; share: number; balance: number }> => {
   const balanceMap = new Map<string, { spent: number; share: number; balance: number }>();
 
+  const getOrCreateBalance = (userId: string) => {
+    if (!userId) {
+      return null;
+    }
+
+    let userBalance = balanceMap.get(userId);
+    if (!userBalance) {
+      userBalance = { spent: 0, share: 0, balance: 0 };
+      balanceMap.set(userId, userBalance);
+    }
+
+    return userBalance;
+  };
+
   // Initialize for all members
   members.forEach((member) => {
     balanceMap.set(member.userId, { spent: 0, share: 0, balance: 0 });
@@ -102,15 +116,27 @@ export const calculateBalances = (
 
   // Calculate spent and share for each member
   expenses.forEach((expense) => {
+    if (!Number.isFinite(expense.amount) || expense.amount <= 0) {
+      return;
+    }
+
     // Add to spent for payer
-    const payerBalance = balanceMap.get(expense.paidBy)!;
-    payerBalance.spent += expense.amount;
+    const payerBalance = getOrCreateBalance(expense.paidBy);
+    if (payerBalance) {
+      payerBalance.spent += expense.amount;
+    }
 
     // Add to share for each person in split
+    if (!Array.isArray(expense.splitAmong) || expense.splitAmong.length === 0) {
+      return;
+    }
+
     const amountPerPerson = expense.amount / expense.splitAmong.length;
     expense.splitAmong.forEach((userId) => {
-      const userBalance = balanceMap.get(userId)!;
-      userBalance.share += amountPerPerson;
+      const userBalance = getOrCreateBalance(userId);
+      if (userBalance) {
+        userBalance.share += amountPerPerson;
+      }
     });
   });
 

@@ -5,17 +5,9 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import CreateTrip from './pages/CreateTrip';
+import AddExpense from './pages/AddExpense';
 import TripDetail from './pages/TripDetail';
 import NotFound from './pages/NotFound';
-
-const AddExpensePlaceholder = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-    <div className="bg-white rounded-lg shadow p-8 text-center max-w-md w-full">
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Add Expense</h1>
-      <p className="text-gray-600">Coming soon.</p>
-    </div>
-  </div>
-);
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -66,7 +58,7 @@ const App = () => {
             path="/trip/:tripId/expense/new"
             element={
               <ProtectedRoute>
-                <AddExpensePlaceholder />
+                <AddExpense />
               </ProtectedRoute>
             }
           />
