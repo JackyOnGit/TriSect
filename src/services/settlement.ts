@@ -103,13 +103,24 @@ export const calculateBalances = (
   // Calculate spent and share for each member
   expenses.forEach((expense) => {
     // Add to spent for payer
-    const payerBalance = balanceMap.get(expense.paidBy)!;
+    const payerBalance = balanceMap.get(expense.paidBy);
+    if (!payerBalance) {
+      console.warn('Skipping expense with unknown payer in calculateBalances:', expense);
+      return;
+    }
     payerBalance.spent += expense.amount;
 
     // Add to share for each person in split
+    if (!Array.isArray(expense.splitAmong) || expense.splitAmong.length === 0) {
+      return;
+    }
+
     const amountPerPerson = expense.amount / expense.splitAmong.length;
     expense.splitAmong.forEach((userId) => {
-      const userBalance = balanceMap.get(userId)!;
+      const userBalance = balanceMap.get(userId);
+      if (!userBalance) {
+        return;
+      }
       userBalance.share += amountPerPerson;
     });
   });

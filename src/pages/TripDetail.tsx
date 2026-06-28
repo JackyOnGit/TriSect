@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { getTripById, getTripMembers } from '../services/trips';
 import { getTripExpenses } from '../services/expenses';
 import { calculateBalances, calculateSettlements } from '../services/settlement';
+import AddMemberModal from '../components/AddMemberModal';
 import { Expense, Trip, TripMember } from '../types';
 
 const TripDetail: React.FC = () => {
@@ -16,6 +17,20 @@ const TripDetail: React.FC = () => {
 	const [expenses, setExpenses] = useState<Expense[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+
+	const refreshMembers = async () => {
+		if (!tripId) {
+			return;
+		}
+
+		try {
+			const latestMembers = await getTripMembers(tripId);
+			setMembers(latestMembers);
+		} catch (refreshError) {
+			console.error('Failed to refresh trip members:', refreshError);
+		}
+	};
 
 	useEffect(() => {
 		if (authLoading) {
@@ -148,8 +163,8 @@ const TripDetail: React.FC = () => {
 					<div className="flex items-center justify-between mb-4">
 						<h2 className="text-2xl font-bold text-gray-900">Members</h2>
 						<button
-							disabled
-							className="bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded cursor-not-allowed"
+							onClick={() => setIsAddMemberModalOpen(true)}
+							className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
 						>
 							+ Add Member
 						</button>
@@ -259,6 +274,13 @@ const TripDetail: React.FC = () => {
 						</table>
 					</div>
 				</section>
+
+				<AddMemberModal
+					tripId={trip.id}
+					isOpen={isAddMemberModalOpen}
+					onClose={() => setIsAddMemberModalOpen(false)}
+					onMemberAdded={refreshMembers}
+				/>
 			</main>
 		</div>
 	);

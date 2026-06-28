@@ -100,6 +100,28 @@ export const addTripMember = async (
   await setDoc(memberRef, member as any);
 };
 
+export const addMemberToTrip = async (
+  tripId: string,
+  userId: string,
+  role: 'Adult' | 'Kid' | 'Baby'
+): Promise<void> => {
+  const userRef = doc(db, 'users', userId);
+  const userSnap = await getDoc(userRef);
+
+  if (!userSnap.exists()) {
+    throw new Error('Selected user was not found.');
+  }
+
+  const userData = userSnap.data();
+  const email = typeof userData.email === 'string' ? userData.email : '';
+  const displayName =
+    typeof userData.displayName === 'string' && userData.displayName.trim().length > 0
+      ? userData.displayName
+      : email || 'Unknown User';
+
+  await addTripMember(tripId, userId, email, displayName, role);
+};
+
 export const getTripMembers = async (tripId: string): Promise<TripMember[]> => {
   const querySnapshot = await getDocs(collection(db, 'trips', tripId, 'members'));
 
