@@ -5,6 +5,7 @@ import {
   getDoc,
   doc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   Timestamp,
@@ -73,11 +74,43 @@ export const getTripById = async (tripId: string): Promise<Trip | null> => {
     description: data.description,
     startDate: data.startDate.toDate(),
     endDate: data.endDate.toDate(),
+    budget: typeof data.budget === 'number' ? data.budget : undefined,
+    currency: typeof data.currency === 'string' ? data.currency : undefined,
     createdBy: data.createdBy,
     createdAt: data.createdAt.toDate(),
     updatedAt: data.updatedAt.toDate(),
     isSettled: data.isSettled,
   };
+};
+
+export const getTrip = getTripById;
+
+export const updateTrip = async (
+  tripId: string,
+  updates: {
+    name: string;
+    description: string;
+    startDate: Date;
+    endDate: Date;
+    budget?: number | null;
+    currency?: string | null;
+  }
+): Promise<void> => {
+  const payload: Record<string, unknown> = {
+    name: updates.name,
+    description: updates.description,
+    startDate: Timestamp.fromDate(updates.startDate),
+    endDate: Timestamp.fromDate(updates.endDate),
+    updatedAt: Timestamp.now(),
+    budget: typeof updates.budget === 'number' ? updates.budget : null,
+    currency: updates.currency && updates.currency.trim() ? updates.currency.trim() : null,
+  };
+
+  await updateDoc(doc(db, 'trips', tripId), payload);
+};
+
+export const deleteTrip = async (tripId: string): Promise<void> => {
+  await deleteDoc(doc(db, 'trips', tripId));
 };
 
 export const addTripMember = async (
