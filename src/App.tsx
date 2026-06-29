@@ -68,19 +68,7 @@ const App = () => {
             path="/trip/:tripId/expense/new"
             element={
               <ProtectedRoute>
-<<<<<<< HEAD
-                <div className="min-h-screen flex items-center justify-center">Coming Soon</div>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/trip/:tripId/expense/:expenseId/edit"
-            element={
-              <ProtectedRoute>
-                <EditExpense />
-=======
                 <AddExpense />
->>>>>>> feature/add-expense
               </ProtectedRoute>
             }
           />
