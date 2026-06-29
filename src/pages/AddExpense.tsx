@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { createExpense } from '../services/expenses';
+import { addExpense } from '../services/expenses';
 import { getTripMembers } from '../services/trips';
 import { TripMember } from '../types';
 
@@ -220,7 +220,7 @@ const AddExpense: React.FC = () => {
 		setSubmitting(true);
 
 		try {
-			await createExpense(
+			await addExpense(
 				tripId,
 				sanitizedDescription,
 				amountValue,
