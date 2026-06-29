@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import CreateTrip from './pages/CreateTrip';
+import AddExpense from './pages/AddExpense';
 import TripDetail from './pages/TripDetail';
 import EditTrip from './pages/EditTrip';
 import EditExpense from './pages/EditExpense';
@@ -67,6 +68,7 @@ const App = () => {
             path="/trip/:tripId/expense/new"
             element={
               <ProtectedRoute>
+<<<<<<< HEAD
                 <div className="min-h-screen flex items-center justify-center">Coming Soon</div>
               </ProtectedRoute>
             }
@@ -76,6 +78,9 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <EditExpense />
+=======
+                <AddExpense />
+>>>>>>> feature/add-expense
               </ProtectedRoute>
             }
           />
