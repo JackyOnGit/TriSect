@@ -102,7 +102,7 @@ const AddExpense: React.FC = () => {
 
 		setCategoryId(categoryDistributions[0].id);
 		setCategory(categoryDistributions[0].category);
-	}, [category, categoryDistributions, categoryId]);
+	}, [categoryDistributions]);
 
 	const amountValue = Number(amount) || 0;
 	const parsedExpenseDate = new Date(`${date}T00:00:00`);
