@@ -1,9 +1,33 @@
 import { CategoryDistribution, Expense, Participant, Settlement } from '../types';
 
+const normalizeCategoryName = (value?: string | null) => value?.trim().toLowerCase() ?? '';
+
+const isHousingCategory = (value?: string | null) => {
+  const normalized = normalizeCategoryName(value);
+  return normalized === 'housing' || normalized === 'accommodation';
+};
+
+const getCategoryDistributionForExpense = (
+  expense: Expense,
+  categoryDistributions: CategoryDistribution[]
+) => {
+  if (expense.categoryId) {
+    const byId = categoryDistributions.find((distribution) => distribution.id === expense.categoryId);
+    if (byId) {
+      return byId;
+    }
+  }
+
+  return categoryDistributions.find(
+    (distribution) =>
+      normalizeCategoryName(distribution.category) === normalizeCategoryName(expense.category)
+  );
+};
+
 /**
  * Compute each participant's share for a single expense.
  * - splitType 'byCategory': distributes based on role weights from the matching
- *   CategoryDistribution, multiplied by nights for Accommodation expenses.
+ *   CategoryDistribution, multiplied by nights for Housing expenses.
  * - splitType 'custom': uses the customSplit map directly.
  */
 const computeShares = (
@@ -21,9 +45,7 @@ const computeShares = (
   }
 
   // byCategory — look up the distribution key
-  const catDist = expense.categoryId
-    ? categoryDistributions.find((cd) => cd.id === expense.categoryId)
-    : undefined;
+  const catDist = getCategoryDistributionForExpense(expense, categoryDistributions);
 
   if (!catDist || participants.length === 0) {
     // Fallback: equal split among all participants
@@ -32,12 +54,12 @@ const computeShares = (
     return shares;
   }
 
-  const isAccommodation = expense.category === 'Accommodation';
+  const useNights = isHousingCategory(catDist.category || expense.category);
   let totalWeight = 0;
   const weights = new Map<string, number>();
 
   participants.forEach((p) => {
-    const nights = isAccommodation ? p.nights : 1;
+    const nights = useNights ? p.nights : 1;
     const weight =
       (p.adult * catDist.adult + p.kid * catDist.kid + p.baby * catDist.baby) * nights;
     weights.set(p.id, weight);

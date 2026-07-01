@@ -15,7 +15,7 @@ export const createExpense = async (
   tripId: string,
   description: string,
   amount: number,
-  category: 'Food' | 'Accommodation' | 'Transport' | 'Activities' | 'Other',
+  category: string,
   paidByParticipant: string,
   splitType: 'byCategory' | 'custom',
   date: Date,

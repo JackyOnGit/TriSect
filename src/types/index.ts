@@ -57,10 +57,10 @@ export interface Expense {
   id: string;
   description: string;
   amount: number;
-  category: 'Food' | 'Accommodation' | 'Transport' | 'Activities' | 'Other';
+  category: string;
   paidByParticipant: string; // participant id
   splitType: 'byCategory' | 'custom';
-  categoryId?: string; // id of CategoryDistribution, used when splitType is 'byCategory'
+  categoryId?: string | null; // id of CategoryDistribution, used when splitType is 'byCategory'
   customSplit?: Record<string, number> | null; // participantId -> amount
   date: Date;
   createdAt: Date;
