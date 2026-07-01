@@ -7,10 +7,7 @@ import { getTripParticipants } from '../services/participants';
 import { getTripCategoryDistributions } from '../services/categoryDistributions';
 import { CategoryDistribution, Participant } from '../types';
 
-type ExpenseCategory = 'Food' | 'Transport' | 'Accommodation' | 'Activities' | 'Other';
 type SplitType = 'byCategory' | 'custom';
-
-const categories: ExpenseCategory[] = ['Food', 'Transport', 'Accommodation', 'Activities', 'Other'];
 
 const EditExpense: React.FC = () => {
   const { tripId, expenseId } = useParams<{ tripId: string; expenseId: string }>();
@@ -26,7 +23,7 @@ const EditExpense: React.FC = () => {
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState<ExpenseCategory>('Food');
+  const [category, setCategory] = useState('');
   const [paidByParticipant, setPaidByParticipant] = useState('');
   const [splitType, setSplitType] = useState<SplitType>('byCategory');
   const [categoryId, setCategoryId] = useState('');
@@ -90,6 +87,37 @@ const EditExpense: React.FC = () => {
     loadData();
   }, [expenseId, tripId, user]);
 
+  useEffect(() => {
+    if (categoryDistributions.length === 0) {
+      setCategory('');
+      setCategoryId('');
+      return;
+    }
+
+    const selectedDistribution = categoryId
+      ? categoryDistributions.find((distribution) => distribution.id === categoryId)
+      : undefined;
+
+    if (selectedDistribution) {
+      if (category !== selectedDistribution.category) {
+        setCategory(selectedDistribution.category);
+      }
+      return;
+    }
+
+    const distributionMatchingCategory = category
+      ? categoryDistributions.find((distribution) => distribution.category === category)
+      : undefined;
+
+    if (distributionMatchingCategory) {
+      setCategoryId(distributionMatchingCategory.id);
+      return;
+    }
+
+    setCategoryId(categoryDistributions[0].id);
+    setCategory(categoryDistributions[0].category);
+  }, [category, categoryDistributions, categoryId]);
+
   const amountValue = Number(amount) || 0;
   const parsedExpenseDate = new Date(`${date}T00:00:00`);
 
@@ -143,10 +171,16 @@ const EditExpense: React.FC = () => {
       return 'Please select who paid for this expense.';
     }
 
-    if (splitType === 'byCategory') {
-      if (!categoryId) {
-        return 'Please select a distribution key for the category split.';
-      }
+    if (categoryDistributions.length === 0) {
+      return 'This trip has no categories. Please add a category distribution before editing expenses.';
+    }
+
+    if (!categoryId || !category.trim()) {
+      return 'Please select a category.';
+    }
+
+    if (splitType === 'byCategory' && !categoryDistributions.some((dist) => dist.id === categoryId)) {
+      return 'The selected category is missing its distribution key.';
     }
 
     if (splitType === 'custom') {
@@ -210,7 +244,7 @@ const EditExpense: React.FC = () => {
         category,
         paidByParticipant: sanitizedPaidBy,
         splitType,
-        categoryId: splitType === 'byCategory' ? categoryId : undefined,
+        categoryId: splitType === 'byCategory' ? categoryId : null,
         customSplit: customSplitPayload,
         date: parsedExpenseDate,
       });
@@ -254,6 +288,19 @@ const EditExpense: React.FC = () => {
               <p className="text-gray-600">Update this expense and split details.</p>
             </div>
           </div>
+
+          {participants.length === 0 && (
+            <div className="mb-4 rounded border border-amber-400 bg-amber-50 px-4 py-3 text-amber-800">
+              No participants found for this trip. Please add participants from the trip page before editing
+              expenses.
+            </div>
+          )}
+          {categoryDistributions.length === 0 && (
+            <div className="mb-4 rounded border border-amber-400 bg-amber-50 px-4 py-3 text-amber-800">
+              No categories found for this trip. Please add category distributions from the trip page before
+              editing expenses.
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
@@ -299,15 +346,27 @@ const EditExpense: React.FC = () => {
                 </label>
                 <select
                   id="expense-category"
-                  value={category}
-                  onChange={(event) => setCategory(event.target.value as ExpenseCategory)}
+                  value={categoryId}
+                  onChange={(event) => {
+                    const selectedId = event.target.value;
+                    const selectedDistribution = categoryDistributions.find(
+                      (distribution) => distribution.id === selectedId
+                    );
+                    setCategoryId(selectedId);
+                    setCategory(selectedDistribution?.category || '');
+                  }}
+                  disabled={categoryDistributions.length === 0}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {categories.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
+                  {categoryDistributions.length === 0 ? (
+                    <option value="">No categories available</option>
+                  ) : (
+                    categoryDistributions.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.category}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
             </div>
@@ -361,7 +420,7 @@ const EditExpense: React.FC = () => {
                     checked={splitType === 'byCategory'}
                     onChange={() => setSplitType('byCategory')}
                   />
-                  By distribution key (split using role weights)
+                  According to the category
                 </label>
                 <label className="flex items-center gap-2 text-gray-700">
                   <input
@@ -371,39 +430,16 @@ const EditExpense: React.FC = () => {
                     checked={splitType === 'custom'}
                     onChange={() => setSplitType('custom')}
                   />
-                  Custom split
+                  Custom Split
                 </label>
               </div>
             </fieldset>
 
             {splitType === 'byCategory' && (
-              <div>
-                <label htmlFor="category-id" className="mb-1 block text-sm font-medium text-gray-700">
-                  Distribution key
-                </label>
-                {categoryDistributions.length === 0 ? (
-                  <p className="text-sm text-amber-700 bg-amber-50 border border-amber-300 rounded-lg px-4 py-2">
-                    No distribution keys found. Please add distribution keys from the trip page.
-                  </p>
-                ) : (
-                  <select
-                    id="category-id"
-                    value={categoryId}
-                    onChange={(event) => setCategoryId(event.target.value)}
-                    required
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="" disabled>
-                      Select distribution key
-                    </option>
-                    {categoryDistributions.map((dist) => (
-                      <option key={dist.id} value={dist.id}>
-                        {dist.category} (Adult: {dist.adult}, Kid: {dist.kid}, Baby: {dist.baby})
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
+              <p className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                This expense will be split using the selected category weights. Housing also takes each
+                participant&apos;s nights into account.
+              </p>
             )}
 
             {splitType === 'custom' && (
@@ -456,7 +492,7 @@ const EditExpense: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || participants.length === 0 || categoryDistributions.length === 0}
                   className="rounded-lg bg-blue-600 px-4 py-3 font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {submitting ? 'Saving...' : 'Save Changes'}
@@ -480,4 +516,3 @@ const EditExpense: React.FC = () => {
 };
 
 export default EditExpense;
-

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { deleteTrip, getTrip, updateTrip } from '../services/trips';
 
-const currencyOptions = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY'];
+const currencyOptions = ['€', 'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY'];
 
 const EditTrip: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
@@ -15,7 +15,7 @@ const EditTrip: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [budget, setBudget] = useState('');
-  const [currency, setCurrency] = useState('USD');
+  const [currency, setCurrency] = useState('€');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -51,7 +51,7 @@ const EditTrip: React.FC = () => {
         setStartDate(trip.startDate ? trip.startDate.toISOString().split('T')[0] : '');
         setEndDate(trip.endDate ? trip.endDate.toISOString().split('T')[0] : '');
         setBudget(typeof trip.budget === 'number' ? String(trip.budget) : '');
-        setCurrency(trip.currency || 'USD');
+        setCurrency(trip.currency || '€');
       } catch (loadError) {
         console.error('Failed to load trip details:', loadError);
         setError('Failed to load trip details. Please try again.');

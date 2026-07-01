@@ -125,6 +125,12 @@ const TripDetail: React.FC = () => {
 		return map;
 	}, [participants]);
 
+	const categoryNameById = useMemo(() => {
+		const map = new Map<string, string>();
+		categoryDistributions.forEach((distribution) => map.set(distribution.id, distribution.category));
+		return map;
+	}, [categoryDistributions]);
+
 	const settlements = useMemo(
 		() => calculateSettlements(expenses, participants, categoryDistributions),
 		[expenses, participants, categoryDistributions]
@@ -298,7 +304,7 @@ const TripDetail: React.FC = () => {
 				<section className="bg-white rounded-lg shadow p-6 mb-6">
 					<div className="flex items-center justify-between mb-4">
 						<div>
-							<h2 className="text-2xl font-bold text-gray-900">Distribution Keys</h2>
+							<h2 className="text-2xl font-bold text-gray-900">Categories</h2>
 							<p className="text-sm text-gray-500 mt-1">
 								Role weights applied when splitting expenses by category.
 							</p>
@@ -307,12 +313,12 @@ const TripDetail: React.FC = () => {
 							onClick={() => setIsManageDistributionsModalOpen(true)}
 							className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
 						>
-							Manage Keys
+							Manage Categories
 						</button>
 					</div>
 
 					{categoryDistributions.length === 0 ? (
-						<p className="text-gray-600">No distribution keys yet.</p>
+						<p className="text-gray-600">No categories yet.</p>
 					) : (
 						<div className="overflow-x-auto">
 							<table className="w-full text-left text-sm border-collapse">
@@ -363,14 +369,17 @@ const TripDetail: React.FC = () => {
 									<div>
 										<p className="text-lg font-semibold text-gray-900">{expense.description}</p>
 										<p className="text-sm text-gray-600">
-											{expense.category} • Paid by{' '}
+											{expense.splitType === 'byCategory'
+												? categoryNameById.get(expense.categoryId || '') || expense.category
+												: expense.category}{' '}
+											• Paid by{' '}
 											{participantNameById.get(expense.paidByParticipant) || 'Unknown'} •{' '}
 											{formatDate(expense.date)}
 										</p>
 										<p className="text-xs text-gray-500 mt-0.5">
 											Split:{' '}
 											{expense.splitType === 'byCategory'
-												? `by distribution key`
+												? `according to the category`
 												: 'custom'}
 										</p>
 									</div>
@@ -483,4 +492,3 @@ const TripDetail: React.FC = () => {
 };
 
 export default TripDetail;
-

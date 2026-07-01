@@ -7,9 +7,16 @@ import {
   updateDoc,
   deleteDoc,
   Timestamp,
+  setDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { CategoryDistribution } from '../types';
+
+const DEFAULT_CATEGORY_DISTRIBUTIONS: Array<CategoryDistribution & { id: string }> = [
+  { id: 'default-housing', category: 'Housing', adult: 1, kid: 1, baby: 1 },
+  { id: 'default-food', category: 'Food', adult: 1, kid: 0.5, baby: 1 },
+  { id: 'default-alcohol', category: 'Alcohol', adult: 1, kid: 0, baby: 0 },
+];
 
 export const createCategoryDistribution = async (
   tripId: string,
@@ -35,6 +42,31 @@ export const getTripCategoryDistributions = async (
   const querySnapshot = await getDocs(
     collection(db, 'trips', tripId, 'categoryDistributions')
   );
+
+  if (querySnapshot.empty) {
+    const now = Timestamp.now();
+
+    await Promise.all(
+      DEFAULT_CATEGORY_DISTRIBUTIONS.map((distribution) =>
+        setDoc(doc(db, 'trips', tripId, 'categoryDistributions', distribution.id), {
+          category: distribution.category,
+          adult: distribution.adult,
+          kid: distribution.kid,
+          baby: distribution.baby,
+          createdAt: now,
+          updatedAt: now,
+        })
+      )
+    );
+
+    return DEFAULT_CATEGORY_DISTRIBUTIONS.map(({ id, category, adult, kid, baby }) => ({
+      id,
+      category,
+      adult,
+      kid,
+      baby,
+    }));
+  }
 
   const distributions: CategoryDistribution[] = [];
   querySnapshot.forEach((snap) => {
