@@ -35,12 +35,12 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (request.method !== 'GET') return;
 
-  // Network-first for Firebase API calls
+  // Network-first for Firebase API calls (use endsWith to prevent subdomain spoofing)
   if (
-    url.hostname.includes('firebaseio.com') ||
-    url.hostname.includes('googleapis.com') ||
-    url.hostname.includes('firestore.googleapis.com') ||
-    url.hostname.includes('identitytoolkit.googleapis.com')
+    url.hostname.endsWith('.firebaseio.com') ||
+    url.hostname === 'firebaseio.com' ||
+    url.hostname.endsWith('.googleapis.com') ||
+    url.hostname === 'googleapis.com'
   ) {
     event.respondWith(networkFirst(request));
     return;
