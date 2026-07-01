@@ -14,7 +14,7 @@ import { CategoryDistribution } from '../types';
 
 const DEFAULT_CATEGORY_DISTRIBUTIONS: Array<CategoryDistribution & { id: string }> = [
   { id: 'default-housing', category: 'Housing', adult: 1, kid: 1, baby: 1 },
-  { id: 'default-food', category: 'Food', adult: 1, kid: 0.5, baby: 1 },
+  { id: 'default-food', category: 'Food', adult: 1, kid: 0.5, baby: 0 },
   { id: 'default-alcohol', category: 'Alcohol', adult: 1, kid: 0, baby: 0 },
 ];
 
