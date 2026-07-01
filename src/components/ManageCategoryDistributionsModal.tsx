@@ -77,6 +77,9 @@ const ManageCategoryDistributionsModal: React.FC<ManageCategoryDistributionsModa
 		return parsed;
 	};
 
+	const getErrorMessage = (error: unknown, fallback: string) =>
+		error instanceof Error && error.message ? error.message : fallback;
+
 	const categoryExists = (categoryName: string, excludedId?: string) =>
 		distributions.some(
 			(distribution) =>
@@ -105,9 +108,9 @@ const ManageCategoryDistributionsModal: React.FC<ManageCategoryDistributionsModa
 			await createCategoryDistribution(tripId, trimmedCategory, adultWeight, kidWeight, babyWeight);
 			onChanged();
 			resetForm();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('Failed to add distribution key:', err);
-			setError(err?.message || 'Failed to add distribution key. Please try again.');
+			setError(getErrorMessage(err, 'Failed to add distribution key. Please try again.'));
 		} finally {
 			setLoading(false);
 		}
@@ -154,9 +157,9 @@ const ManageCategoryDistributionsModal: React.FC<ManageCategoryDistributionsModa
 				baby: babyWeight,
 			});
 			await onChanged();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('Failed to update distribution key:', err);
-			setError(err?.message || 'Failed to update distribution key. Please try again.');
+			setError(getErrorMessage(err, 'Failed to update distribution key. Please try again.'));
 		} finally {
 			setSavingId(null);
 		}
