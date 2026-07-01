@@ -1,44 +1,92 @@
-import { Expense, Settlement, TripMember } from '../types';
+import { CategoryDistribution, Expense, Participant, Settlement } from '../types';
 
 /**
- * Calculate settlements between trip members
- * Returns an array of transactions needed to settle the trip
+ * Compute each participant's share for a single expense.
+ * - splitType 'byCategory': distributes based on role weights from the matching
+ *   CategoryDistribution, multiplied by nights for Accommodation expenses.
+ * - splitType 'custom': uses the customSplit map directly.
+ */
+const computeShares = (
+  expense: Expense,
+  participants: Participant[],
+  categoryDistributions: CategoryDistribution[]
+): Map<string, number> => {
+  const shares = new Map<string, number>();
+
+  if (expense.splitType === 'custom' && expense.customSplit) {
+    for (const [participantId, amount] of Object.entries(expense.customSplit)) {
+      shares.set(participantId, amount);
+    }
+    return shares;
+  }
+
+  // byCategory — look up the distribution key
+  const catDist = expense.categoryId
+    ? categoryDistributions.find((cd) => cd.id === expense.categoryId)
+    : undefined;
+
+  if (!catDist || participants.length === 0) {
+    // Fallback: equal split among all participants
+    const equalShare = participants.length > 0 ? expense.amount / participants.length : 0;
+    participants.forEach((p) => shares.set(p.id, equalShare));
+    return shares;
+  }
+
+  const isAccommodation = expense.category === 'Accommodation';
+  let totalWeight = 0;
+  const weights = new Map<string, number>();
+
+  participants.forEach((p) => {
+    const nights = isAccommodation ? p.nights : 1;
+    const weight =
+      (p.adult * catDist.adult + p.kid * catDist.kid + p.baby * catDist.baby) * nights;
+    weights.set(p.id, weight);
+    totalWeight += weight;
+  });
+
+  if (totalWeight === 0) {
+    // All weights are zero — fall back to equal split
+    const equalShare = expense.amount / participants.length;
+    participants.forEach((p) => shares.set(p.id, equalShare));
+    return shares;
+  }
+
+  participants.forEach((p) => {
+    const weight = weights.get(p.id) ?? 0;
+    shares.set(p.id, (weight / totalWeight) * expense.amount);
+  });
+
+  return shares;
+};
+
+/**
+ * Calculate settlements between trip participants.
+ * Returns an array of transactions needed to settle the trip.
  */
 export const calculateSettlements = (
   expenses: Expense[],
-  members: TripMember[]
+  participants: Participant[],
+  categoryDistributions: CategoryDistribution[]
 ): Settlement[] => {
-  // Create a map of balances: userId -> amount
-  const balances: Map<string, number> = new Map();
+  const balances = new Map<string, number>();
 
-  // Initialize balances for all members
-  members.forEach((member) => {
-    balances.set(member.userId, 0);
-  });
+  participants.forEach((p) => balances.set(p.id, 0));
 
-  // Calculate balances based on expenses
   expenses.forEach((expense) => {
-    // Add to the payer's balance (they paid money out)
-    const payerBalance = balances.get(expense.paidBy) || 0;
-    balances.set(expense.paidBy, payerBalance + expense.amount);
+    // Credit the payer
+    const payerBalance = balances.get(expense.paidByParticipant) ?? 0;
+    balances.set(expense.paidByParticipant, payerBalance + expense.amount);
 
-    // Distribute the expense among split members with distribution key
-    const splitCount = expense.splitAmong.length;
-    const amountPerPerson = expense.amount / splitCount;
-
-    expense.splitAmong.forEach((userId) => {
-      const userBalance = balances.get(userId) || 0;
-      balances.set(userId, userBalance - amountPerPerson);
+    // Debit each participant by their share
+    const shares = computeShares(expense, participants, categoryDistributions);
+    shares.forEach((share, participantId) => {
+      const current = balances.get(participantId) ?? 0;
+      balances.set(participantId, current - share);
     });
   });
 
-  // Create a map of user info for display
-  const userMap = new Map(
-    members.map((m) => [m.userId, { displayName: m.displayName, email: m.email }])
-  );
+  const participantNameById = new Map(participants.map((p) => [p.id, p.name]));
 
-  // Generate settlements (who owes whom)
-  const settlements: Settlement[] = [];
   const debtors = Array.from(balances.entries())
     .filter(([, balance]) => balance < 0)
     .sort((a, b) => a[1] - b[1]); // Most negative first
@@ -47,10 +95,11 @@ export const calculateSettlements = (
     .filter(([, balance]) => balance > 0)
     .sort((a, b) => b[1] - a[1]); // Most positive first
 
+  const settlements: Settlement[] = [];
   let debtorIndex = 0;
   let creditorIndex = 0;
-  let debtorRemaining = Math.abs(debtors[debtorIndex]?.[1] || 0);
-  let creditorRemaining = creditors[creditorIndex]?.[1] || 0;
+  let debtorRemaining = Math.abs(debtors[debtorIndex]?.[1] ?? 0);
+  let creditorRemaining = creditors[creditorIndex]?.[1] ?? 0;
 
   while (debtorIndex < debtors.length && creditorIndex < creditors.length) {
     const settlementAmount = Math.min(debtorRemaining, creditorRemaining);
@@ -61,8 +110,8 @@ export const calculateSettlements = (
       from: debtor[0],
       to: creditor[0],
       amount: Math.round(settlementAmount * 100) / 100,
-      fromName: userMap.get(debtor[0])?.displayName || 'Unknown',
-      toName: userMap.get(creditor[0])?.displayName || 'Unknown',
+      fromName: participantNameById.get(debtor[0]) ?? 'Unknown',
+      toName: participantNameById.get(creditor[0]) ?? 'Unknown',
     });
 
     debtorRemaining -= settlementAmount;
@@ -87,45 +136,37 @@ export const calculateSettlements = (
 };
 
 /**
- * Calculate how much each person spent vs. should have paid
+ * Calculate how much each participant spent vs. should have paid.
  */
 export const calculateBalances = (
   expenses: Expense[],
-  members: TripMember[]
+  participants: Participant[],
+  categoryDistributions: CategoryDistribution[]
 ): Map<string, { spent: number; share: number; balance: number }> => {
   const balanceMap = new Map<string, { spent: number; share: number; balance: number }>();
 
-  // Initialize for all members
-  members.forEach((member) => {
-    balanceMap.set(member.userId, { spent: 0, share: 0, balance: 0 });
+  participants.forEach((p) => {
+    balanceMap.set(p.id, { spent: 0, share: 0, balance: 0 });
   });
 
-  // Calculate spent and share for each member
   expenses.forEach((expense) => {
-    // Add to spent for payer
-    const payerBalance = balanceMap.get(expense.paidBy);
+    // Credit the payer
+    const payerBalance = balanceMap.get(expense.paidByParticipant);
     if (!payerBalance) {
       console.warn('Skipping expense with unknown payer in calculateBalances:', expense);
       return;
     }
     payerBalance.spent += expense.amount;
 
-    // Add to share for each person in split
-    if (!Array.isArray(expense.splitAmong) || expense.splitAmong.length === 0) {
-      return;
-    }
-
-    const amountPerPerson = expense.amount / expense.splitAmong.length;
-    expense.splitAmong.forEach((userId) => {
-      const userBalance = balanceMap.get(userId);
-      if (!userBalance) {
-        return;
-      }
-      userBalance.share += amountPerPerson;
+    // Debit each participant their share
+    const shares = computeShares(expense, participants, categoryDistributions);
+    shares.forEach((share, participantId) => {
+      const entry = balanceMap.get(participantId);
+      if (!entry) return;
+      entry.share += share;
     });
   });
 
-  // Calculate balance (spent - share)
   balanceMap.forEach((balance) => {
     balance.balance = balance.spent - balance.share;
   });

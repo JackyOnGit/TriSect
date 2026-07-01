@@ -3,10 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getTripById, getTripMembers } from '../services/trips';
 import { getTripExpenses } from '../services/expenses';
+import { getTripParticipants } from '../services/participants';
+import { getTripCategoryDistributions } from '../services/categoryDistributions';
 import { calculateBalances, calculateSettlements } from '../services/settlement';
 import AddMemberModal from '../components/AddMemberModal';
+import AddParticipantModal from '../components/AddParticipantModal';
+import ManageCategoryDistributionsModal from '../components/ManageCategoryDistributionsModal';
 import DeleteExpenseModal from '../components/DeleteExpenseModal';
-import { Expense, Trip, TripMember } from '../types';
+import { CategoryDistribution, Expense, Participant, Trip, TripMember } from '../types';
 
 const TripDetail: React.FC = () => {
 	const { tripId } = useParams<{ tripId: string }>();
@@ -15,17 +19,18 @@ const TripDetail: React.FC = () => {
 
 	const [trip, setTrip] = useState<Trip | null>(null);
 	const [members, setMembers] = useState<TripMember[]>([]);
+	const [participants, setParticipants] = useState<Participant[]>([]);
+	const [categoryDistributions, setCategoryDistributions] = useState<CategoryDistribution[]>([]);
 	const [expenses, setExpenses] = useState<Expense[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+	const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] = useState(false);
+	const [isManageDistributionsModalOpen, setIsManageDistributionsModalOpen] = useState(false);
 	const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
 
 	const refreshMembers = async () => {
-		if (!tripId) {
-			return;
-		}
-
+		if (!tripId) return;
 		try {
 			const latestMembers = await getTripMembers(tripId);
 			setMembers(latestMembers);
@@ -34,11 +39,28 @@ const TripDetail: React.FC = () => {
 		}
 	};
 
-	const refreshExpenses = async () => {
-		if (!tripId) {
-			return;
+	const refreshParticipants = async () => {
+		if (!tripId) return;
+		try {
+			const latestParticipants = await getTripParticipants(tripId);
+			setParticipants(latestParticipants);
+		} catch (refreshError) {
+			console.error('Failed to refresh participants:', refreshError);
 		}
+	};
 
+	const refreshDistributions = async () => {
+		if (!tripId) return;
+		try {
+			const latest = await getTripCategoryDistributions(tripId);
+			setCategoryDistributions(latest);
+		} catch (refreshError) {
+			console.error('Failed to refresh category distributions:', refreshError);
+		}
+	};
+
+	const refreshExpenses = async () => {
+		if (!tripId) return;
 		try {
 			const latestExpenses = await getTripExpenses(tripId);
 			setExpenses(latestExpenses);
@@ -48,9 +70,7 @@ const TripDetail: React.FC = () => {
 	};
 
 	useEffect(() => {
-		if (authLoading) {
-			return;
-		}
+		if (authLoading) return;
 
 		if (!user) {
 			navigate('/login');
@@ -76,13 +96,17 @@ const TripDetail: React.FC = () => {
 					return;
 				}
 
-				const [tripMembers, tripExpenses] = await Promise.all([
+				const [tripMembers, tripParticipants, distributions, tripExpenses] = await Promise.all([
 					getTripMembers(tripId),
+					getTripParticipants(tripId),
+					getTripCategoryDistributions(tripId),
 					getTripExpenses(tripId),
 				]);
 
 				setTrip(tripData);
 				setMembers(tripMembers);
+				setParticipants(tripParticipants);
+				setCategoryDistributions(distributions);
 				setExpenses(tripExpenses);
 			} catch (loadError) {
 				console.error('Failed to load trip details:', loadError);
@@ -95,16 +119,21 @@ const TripDetail: React.FC = () => {
 		loadTripDetails();
 	}, [tripId, user, authLoading, navigate]);
 
-	const memberNameById = useMemo(() => {
-		const nameMap = new Map<string, string>();
-		members.forEach((member) => {
-			nameMap.set(member.userId, member.displayName);
-		});
-		return nameMap;
-	}, [members]);
+	const participantNameById = useMemo(() => {
+		const map = new Map<string, string>();
+		participants.forEach((p) => map.set(p.id, p.name));
+		return map;
+	}, [participants]);
 
-	const settlements = useMemo(() => calculateSettlements(expenses, members), [expenses, members]);
-	const balances = useMemo(() => calculateBalances(expenses, members), [expenses, members]);
+	const settlements = useMemo(
+		() => calculateSettlements(expenses, participants, categoryDistributions),
+		[expenses, participants, categoryDistributions]
+	);
+
+	const balances = useMemo(
+		() => calculateBalances(expenses, participants, categoryDistributions),
+		[expenses, participants, categoryDistributions]
+	);
 
 	const formatDate = (date: Date) =>
 		new Intl.DateTimeFormat('en-US', {
@@ -189,6 +218,7 @@ const TripDetail: React.FC = () => {
 					</div>
 				</section>
 
+				{/* Members section */}
 				<section className="bg-white rounded-lg shadow p-6 mb-6">
 					<div className="flex items-center justify-between mb-4">
 						<h2 className="text-2xl font-bold text-gray-900">Members</h2>
@@ -217,6 +247,99 @@ const TripDetail: React.FC = () => {
 					)}
 				</section>
 
+				{/* Participants section */}
+				<section className="bg-white rounded-lg shadow p-6 mb-6">
+					<div className="flex items-center justify-between mb-4">
+						<div>
+							<h2 className="text-2xl font-bold text-gray-900">Participants</h2>
+							<p className="text-sm text-gray-500 mt-1">
+								Groups used for expense splitting (e.g. families).
+							</p>
+						</div>
+						<button
+							onClick={() => setIsAddParticipantModalOpen(true)}
+							className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+						>
+							+ Add Participant
+						</button>
+					</div>
+
+					{participants.length === 0 ? (
+						<p className="text-gray-600">No participants yet. Add participants to split expenses.</p>
+					) : (
+						<div className="overflow-x-auto">
+							<table className="w-full text-left text-sm border-collapse">
+								<thead>
+									<tr className="border-b border-gray-200 text-gray-700">
+										<th className="py-2 pr-4">Name</th>
+										<th className="py-2 pr-4">Adults</th>
+										<th className="py-2 pr-4">Kids</th>
+										<th className="py-2 pr-4">Babies</th>
+										<th className="py-2">Nights</th>
+									</tr>
+								</thead>
+								<tbody>
+									{participants.map((p) => (
+										<tr key={p.id} className="border-b border-gray-100">
+											<td className="py-2 pr-4 font-medium text-gray-900">{p.name}</td>
+											<td className="py-2 pr-4 text-gray-700">{p.adult}</td>
+											<td className="py-2 pr-4 text-gray-700">{p.kid}</td>
+											<td className="py-2 pr-4 text-gray-700">{p.baby}</td>
+											<td className="py-2 text-gray-700">{p.nights}</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					)}
+				</section>
+
+				{/* Distribution keys section */}
+				<section className="bg-white rounded-lg shadow p-6 mb-6">
+					<div className="flex items-center justify-between mb-4">
+						<div>
+							<h2 className="text-2xl font-bold text-gray-900">Distribution Keys</h2>
+							<p className="text-sm text-gray-500 mt-1">
+								Role weights applied when splitting expenses by category.
+							</p>
+						</div>
+						<button
+							onClick={() => setIsManageDistributionsModalOpen(true)}
+							className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+						>
+							Manage Keys
+						</button>
+					</div>
+
+					{categoryDistributions.length === 0 ? (
+						<p className="text-gray-600">No distribution keys yet.</p>
+					) : (
+						<div className="overflow-x-auto">
+							<table className="w-full text-left text-sm border-collapse">
+								<thead>
+									<tr className="border-b border-gray-200 text-gray-700">
+										<th className="py-2 pr-4">Category</th>
+										<th className="py-2 pr-4">Adult weight</th>
+										<th className="py-2 pr-4">Kid weight</th>
+										<th className="py-2">Baby weight</th>
+									</tr>
+								</thead>
+								<tbody>
+									{categoryDistributions.map((dist) => (
+										<tr key={dist.id} className="border-b border-gray-100">
+											<td className="py-2 pr-4 font-medium text-gray-900">{dist.category}</td>
+											<td className="py-2 pr-4 text-gray-700">{dist.adult}</td>
+											<td className="py-2 pr-4 text-gray-700">{dist.kid}</td>
+											<td className="py-2 text-gray-700">{dist.baby}</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					)}
+				</section>
+
+				{/* Expenses section */}
 				<section className="bg-white rounded-lg shadow p-6 mb-6">
 					<div className="flex items-center justify-between mb-4">
 						<h2 className="text-2xl font-bold text-gray-900">Expenses</h2>
@@ -240,8 +363,15 @@ const TripDetail: React.FC = () => {
 									<div>
 										<p className="text-lg font-semibold text-gray-900">{expense.description}</p>
 										<p className="text-sm text-gray-600">
-											{expense.category} • Paid by {memberNameById.get(expense.paidBy) || 'Unknown'} •{' '}
+											{expense.category} • Paid by{' '}
+											{participantNameById.get(expense.paidByParticipant) || 'Unknown'} •{' '}
 											{formatDate(expense.date)}
+										</p>
+										<p className="text-xs text-gray-500 mt-0.5">
+											Split:{' '}
+											{expense.splitType === 'byCategory'
+												? `by distribution key`
+												: 'custom'}
 										</p>
 									</div>
 									<div className="flex items-center gap-3">
@@ -265,6 +395,7 @@ const TripDetail: React.FC = () => {
 					)}
 				</section>
 
+				{/* Settlement section */}
 				<section className="bg-white rounded-lg shadow p-6">
 					<h2 className="text-2xl font-bold text-gray-900 mb-4">Settlement</h2>
 
@@ -289,19 +420,19 @@ const TripDetail: React.FC = () => {
 						<table className="w-full text-left border-collapse">
 							<thead>
 								<tr className="border-b border-gray-200 text-gray-700">
-									<th className="py-2 pr-2">Member</th>
+									<th className="py-2 pr-2">Participant</th>
 									<th className="py-2 pr-2">Spent</th>
 									<th className="py-2 pr-2">Share</th>
 									<th className="py-2 pr-2">Balance</th>
 								</tr>
 							</thead>
 							<tbody>
-								{members.map((member) => {
-									const balance = balances.get(member.userId) || { spent: 0, share: 0, balance: 0 };
+								{participants.map((p) => {
+									const balance = balances.get(p.id) || { spent: 0, share: 0, balance: 0 };
 
 									return (
-										<tr key={member.userId} className="border-b border-gray-100">
-											<td className="py-3 pr-2 font-medium text-gray-900">{member.displayName}</td>
+										<tr key={p.id} className="border-b border-gray-100">
+											<td className="py-3 pr-2 font-medium text-gray-900">{p.name}</td>
 											<td className="py-3 pr-2 text-gray-700">{formatCurrency(balance.spent)}</td>
 											<td className="py-3 pr-2 text-gray-700">{formatCurrency(balance.share)}</td>
 											<td
@@ -325,6 +456,19 @@ const TripDetail: React.FC = () => {
 					onClose={() => setIsAddMemberModalOpen(false)}
 					onMemberAdded={refreshMembers}
 				/>
+				<AddParticipantModal
+					tripId={trip.id}
+					isOpen={isAddParticipantModalOpen}
+					onClose={() => setIsAddParticipantModalOpen(false)}
+					onParticipantAdded={refreshParticipants}
+				/>
+				<ManageCategoryDistributionsModal
+					tripId={trip.id}
+					distributions={categoryDistributions}
+					isOpen={isManageDistributionsModalOpen}
+					onClose={() => setIsManageDistributionsModalOpen(false)}
+					onChanged={refreshDistributions}
+				/>
 				<DeleteExpenseModal
 					expenseId={expenseToDelete?.id || ''}
 					tripId={trip.id}
@@ -339,3 +483,4 @@ const TripDetail: React.FC = () => {
 };
 
 export default TripDetail;
+

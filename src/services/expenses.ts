@@ -16,23 +16,27 @@ export const createExpense = async (
   description: string,
   amount: number,
   category: 'Food' | 'Accommodation' | 'Transport' | 'Activities' | 'Other',
-  paidBy: string,
-  splitAmong: string[],
+  paidByParticipant: string,
+  splitType: 'byCategory' | 'custom',
   date: Date,
+  categoryId?: string | null,
   customSplit?: Record<string, number> | null
 ): Promise<string> => {
   const expense: Record<string, unknown> = {
     description,
     amount,
     category,
-    paidBy,
-    splitAmong,
+    paidByParticipant,
+    splitType,
     date: Timestamp.fromDate(date),
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
   };
 
-  if (customSplit !== undefined) {
+  if (categoryId != null) {
+    expense.categoryId = categoryId;
+  }
+  if (customSplit != null) {
     expense.customSplit = customSplit;
   }
 
@@ -56,8 +60,9 @@ export const getExpense = async (tripId: string, expenseId: string): Promise<Exp
     description: data.description,
     amount: data.amount,
     category: data.category,
-    paidBy: data.paidBy,
-    splitAmong: data.splitAmong,
+    paidByParticipant: data.paidByParticipant,
+    splitType: data.splitType ?? 'custom',
+    categoryId: data.categoryId ?? undefined,
     customSplit: data.customSplit ?? null,
     date: data.date.toDate(),
     createdAt: data.createdAt.toDate(),
@@ -69,15 +74,16 @@ export const getTripExpenses = async (tripId: string): Promise<Expense[]> => {
   const querySnapshot = await getDocs(collection(db, 'trips', tripId, 'expenses'));
 
   const expenses: Expense[] = [];
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
+  querySnapshot.forEach((snap) => {
+    const data = snap.data();
     expenses.push({
-      id: doc.id,
+      id: snap.id,
       description: data.description,
       amount: data.amount,
       category: data.category,
-      paidBy: data.paidBy,
-      splitAmong: data.splitAmong,
+      paidByParticipant: data.paidByParticipant,
+      splitType: data.splitType ?? 'custom',
+      categoryId: data.categoryId ?? undefined,
       customSplit: data.customSplit ?? null,
       date: data.date.toDate(),
       createdAt: data.createdAt.toDate(),
@@ -121,11 +127,14 @@ export async function updateExpense(
   if (updates.category !== undefined) {
     payload.category = updates.category;
   }
-  if (updates.paidBy !== undefined) {
-    payload.paidBy = updates.paidBy;
+  if (updates.paidByParticipant !== undefined) {
+    payload.paidByParticipant = updates.paidByParticipant;
   }
-  if (updates.splitAmong !== undefined) {
-    payload.splitAmong = updates.splitAmong;
+  if (updates.splitType !== undefined) {
+    payload.splitType = updates.splitType;
+  }
+  if (updates.categoryId !== undefined) {
+    payload.categoryId = updates.categoryId;
   }
   if (updates.customSplit !== undefined) {
     payload.customSplit = updates.customSplit;

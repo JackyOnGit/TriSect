@@ -3,11 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import DeleteExpenseModal from '../components/DeleteExpenseModal';
 import { useAuth } from '../hooks/useAuth';
 import { getExpense, updateExpense } from '../services/expenses';
-import { getTripMembers } from '../services/trips';
-import { TripMember } from '../types';
+import { getTripParticipants } from '../services/participants';
+import { getTripCategoryDistributions } from '../services/categoryDistributions';
+import { CategoryDistribution, Participant } from '../types';
 
 type ExpenseCategory = 'Food' | 'Transport' | 'Accommodation' | 'Activities' | 'Other';
-type SplitType = 'equal' | 'custom';
+type SplitType = 'byCategory' | 'custom';
 
 const categories: ExpenseCategory[] = ['Food', 'Transport', 'Accommodation', 'Activities', 'Other'];
 
@@ -16,7 +17,8 @@ const EditExpense: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  const [members, setMembers] = useState<TripMember[]>([]);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [categoryDistributions, setCategoryDistributions] = useState<CategoryDistribution[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -25,9 +27,9 @@ const EditExpense: React.FC = () => {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<ExpenseCategory>('Food');
-  const [paidBy, setPaidBy] = useState('');
-  const [splitType, setSplitType] = useState<SplitType>('equal');
-  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [paidByParticipant, setPaidByParticipant] = useState('');
+  const [splitType, setSplitType] = useState<SplitType>('byCategory');
+  const [categoryId, setCategoryId] = useState('');
   const [date, setDate] = useState('');
   const [customSplits, setCustomSplits] = useState<Record<string, string>>({});
 
@@ -48,8 +50,9 @@ const EditExpense: React.FC = () => {
       setError('');
 
       try {
-        const [tripMembers, expense] = await Promise.all([
-          getTripMembers(tripId),
+        const [tripParticipants, distributions, expense] = await Promise.all([
+          getTripParticipants(tripId),
+          getTripCategoryDistributions(tripId),
           getExpense(tripId, expenseId),
         ]);
 
@@ -59,23 +62,21 @@ const EditExpense: React.FC = () => {
           return;
         }
 
-        setMembers(tripMembers);
+        setParticipants(tripParticipants);
+        setCategoryDistributions(distributions);
+
         setDescription(expense.description || '');
         setAmount(String(expense.amount ?? ''));
         setCategory(expense.category);
-        setPaidBy(expense.paidBy || '');
+        setPaidByParticipant(expense.paidByParticipant || '');
         setDate(expense.date ? expense.date.toISOString().split('T')[0] : '');
-
-        const defaultSelected = Array.isArray(expense.splitAmong) ? expense.splitAmong : [];
-        setSelectedMembers(defaultSelected);
-
-        const hasCustomSplit = !!expense.customSplit && Object.keys(expense.customSplit).length > 0;
-        setSplitType(hasCustomSplit ? 'custom' : 'equal');
+        setSplitType(expense.splitType ?? 'byCategory');
+        setCategoryId(expense.categoryId ?? '');
 
         const nextSplits: Record<string, string> = {};
-        tripMembers.forEach((member) => {
-          const existing = expense.customSplit?.[member.userId];
-          nextSplits[member.userId] = typeof existing === 'number' ? String(existing) : '';
+        tripParticipants.forEach((p) => {
+          const existing = expense.customSplit?.[p.id];
+          nextSplits[p.id] = typeof existing === 'number' ? String(existing) : '';
         });
         setCustomSplits(nextSplits);
       } catch (loadError) {
@@ -92,32 +93,24 @@ const EditExpense: React.FC = () => {
   const amountValue = Number(amount) || 0;
   const parsedExpenseDate = new Date(`${date}T00:00:00`);
 
-  const memberNameById = useMemo(() => {
+  const participantNameById = useMemo(() => {
     const map = new Map<string, string>();
-    members.forEach((member) => {
-      map.set(member.userId, member.displayName);
-    });
+    participants.forEach((p) => map.set(p.id, p.name));
     return map;
-  }, [members]);
+  }, [participants]);
 
   const customSplitTotal = useMemo(() => {
-    return selectedMembers.reduce((sum, userId) => {
-      const parsed = Number(customSplits[userId]);
+    return Object.values(customSplits).reduce((sum, splitAmount) => {
+      const parsed = Number(splitAmount);
       return sum + (Number.isFinite(parsed) ? parsed : 0);
     }, 0);
-  }, [customSplits, selectedMembers]);
+  }, [customSplits]);
 
   const remainingAmount = amountValue - customSplitTotal;
 
-  const handleToggleSelectedMember = (userId: string) => {
-    setSelectedMembers((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
-    );
-  };
-
-  const handleSplitChange = (userId: string, value: string) => {
+  const handleSplitChange = (participantId: string, value: string) => {
     if (value === '') {
-      setCustomSplits((prev) => ({ ...prev, [userId]: '' }));
+      setCustomSplits((prev) => ({ ...prev, [participantId]: '' }));
       return;
     }
 
@@ -126,7 +119,7 @@ const EditExpense: React.FC = () => {
       return;
     }
 
-    setCustomSplits((prev) => ({ ...prev, [userId]: value }));
+    setCustomSplits((prev) => ({ ...prev, [participantId]: value }));
   };
 
   const validateForm = (): string | null => {
@@ -134,7 +127,7 @@ const EditExpense: React.FC = () => {
       return 'Trip or expense was not found.';
     }
 
-    if (!description.trim() || !amount || !paidBy || !date) {
+    if (!description.trim() || !amount || !paidByParticipant || !date) {
       return 'Please fill in all required fields.';
     }
 
@@ -146,20 +139,19 @@ const EditExpense: React.FC = () => {
       return 'Please provide a valid expense date.';
     }
 
-    if (selectedMembers.length === 0) {
-      return 'Select at least one member for expense split.';
-    }
-
-    if (!members.some((member) => member.userId === paidBy)) {
+    if (!participants.some((p) => p.id === paidByParticipant)) {
       return 'Please select who paid for this expense.';
     }
 
+    if (splitType === 'byCategory') {
+      if (!categoryId) {
+        return 'Please select a distribution key for the category split.';
+      }
+    }
+
     if (splitType === 'custom') {
-      const hasInvalidValue = selectedMembers.some((userId) => {
-        const value = customSplits[userId] || '';
-        if (!value) {
-          return false;
-        }
+      const hasInvalidValue = Object.values(customSplits).some((value) => {
+        if (!value) return false;
         const parsed = Number(value);
         return !Number.isFinite(parsed) || parsed < 0;
       });
@@ -168,9 +160,11 @@ const EditExpense: React.FC = () => {
         return 'Custom split values must be valid positive amounts.';
       }
 
-      const activeParticipants = selectedMembers.filter((userId) => Number(customSplits[userId]) > 0).length;
+      const activeParticipants = Object.values(customSplits).filter(
+        (value) => Number(value) > 0
+      ).length;
       if (activeParticipants === 0) {
-        return 'Enter at least one member share for custom split.';
+        return 'Enter at least one participant share for custom split.';
       }
 
       if (Math.abs(remainingAmount) > 0.01) {
@@ -196,14 +190,13 @@ const EditExpense: React.FC = () => {
     }
 
     const sanitizedDescription = description.trim();
-    const sanitizedPaidBy = paidBy.trim();
-    const sanitizedSplitAmong = selectedMembers.filter((userId) => Boolean(userId));
+    const sanitizedPaidBy = paidByParticipant.trim();
     const customSplitPayload =
       splitType === 'custom'
         ? Object.fromEntries(
-            sanitizedSplitAmong
-              .filter((userId) => Number(customSplits[userId]) > 0)
-              .map((userId) => [userId, Number(customSplits[userId])])
+            participants
+              .filter((p) => Number(customSplits[p.id]) > 0)
+              .map((p) => [p.id, Number(customSplits[p.id])])
           )
         : null;
 
@@ -215,8 +208,9 @@ const EditExpense: React.FC = () => {
         description: sanitizedDescription,
         amount: amountValue,
         category,
-        paidBy: sanitizedPaidBy,
-        splitAmong: sanitizedSplitAmong,
+        paidByParticipant: sanitizedPaidBy,
+        splitType,
+        categoryId: splitType === 'byCategory' ? categoryId : undefined,
         customSplit: customSplitPayload,
         date: parsedExpenseDate,
       });
@@ -325,17 +319,17 @@ const EditExpense: React.FC = () => {
                 </label>
                 <select
                   id="paid-by"
-                  value={paidBy}
-                  onChange={(event) => setPaidBy(event.target.value)}
+                  value={paidByParticipant}
+                  onChange={(event) => setPaidByParticipant(event.target.value)}
                   required
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="" disabled>
-                    Select member
+                    Select participant
                   </option>
-                  {members.map((member) => (
-                    <option key={member.userId} value={member.userId}>
-                      {member.displayName} ({member.email})
+                  {participants.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
                     </option>
                   ))}
                 </select>
@@ -356,27 +350,6 @@ const EditExpense: React.FC = () => {
               </div>
             </div>
 
-            <div className="rounded-lg border border-gray-200 p-4">
-              <h2 className="mb-2 text-sm font-semibold text-gray-700">Split members</h2>
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                {members.map((member) => (
-                  <label key={member.userId} className="flex items-center gap-2 text-gray-700">
-                    <input
-                      type="checkbox"
-                      checked={selectedMembers.includes(member.userId)}
-                      onChange={() => handleToggleSelectedMember(member.userId)}
-                    />
-                    <span>{member.displayName}</span>
-                  </label>
-                ))}
-              </div>
-              {selectedMembers.length > 0 && (
-                <p className="mt-2 text-sm text-gray-600">
-                  Selected: {selectedMembers.map((id) => memberNameById.get(id) || 'Unknown').join(', ')}
-                </p>
-              )}
-            </div>
-
             <fieldset className="rounded-lg border border-gray-200 p-4">
               <legend className="px-2 text-sm font-semibold text-gray-700">Split type</legend>
               <div className="mt-2 space-y-2">
@@ -384,11 +357,11 @@ const EditExpense: React.FC = () => {
                   <input
                     type="radio"
                     name="split-type"
-                    value="equal"
-                    checked={splitType === 'equal'}
-                    onChange={() => setSplitType('equal')}
+                    value="byCategory"
+                    checked={splitType === 'byCategory'}
+                    onChange={() => setSplitType('byCategory')}
                   />
-                  Equal split
+                  By distribution key (split using role weights)
                 </label>
                 <label className="flex items-center gap-2 text-gray-700">
                   <input
@@ -403,22 +376,52 @@ const EditExpense: React.FC = () => {
               </div>
             </fieldset>
 
+            {splitType === 'byCategory' && (
+              <div>
+                <label htmlFor="category-id" className="mb-1 block text-sm font-medium text-gray-700">
+                  Distribution key
+                </label>
+                {categoryDistributions.length === 0 ? (
+                  <p className="text-sm text-amber-700 bg-amber-50 border border-amber-300 rounded-lg px-4 py-2">
+                    No distribution keys found. Please add distribution keys from the trip page.
+                  </p>
+                ) : (
+                  <select
+                    id="category-id"
+                    value={categoryId}
+                    onChange={(event) => setCategoryId(event.target.value)}
+                    required
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="" disabled>
+                      Select distribution key
+                    </option>
+                    {categoryDistributions.map((dist) => (
+                      <option key={dist.id} value={dist.id}>
+                        {dist.category} (Adult: {dist.adult}, Kid: {dist.kid}, Baby: {dist.baby})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
+
             {splitType === 'custom' && (
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
                 <h2 className="mb-3 text-lg font-semibold text-gray-900">Custom split amounts</h2>
                 <div className="space-y-3">
-                  {selectedMembers.map((userId) => (
-                    <div key={userId} className="grid grid-cols-1 gap-2 md:grid-cols-3 md:items-center">
-                      <label htmlFor={`split-${userId}`} className="text-sm font-medium text-gray-700">
-                        {memberNameById.get(userId) || 'Unknown'}
+                  {participants.map((p) => (
+                    <div key={p.id} className="grid grid-cols-1 gap-2 md:grid-cols-3 md:items-center">
+                      <label htmlFor={`split-${p.id}`} className="text-sm font-medium text-gray-700">
+                        {participantNameById.get(p.id) || 'Unknown'}
                       </label>
                       <input
-                        id={`split-${userId}`}
+                        id={`split-${p.id}`}
                         type="number"
                         min="0"
                         step="0.01"
-                        value={customSplits[userId] || ''}
-                        onChange={(event) => handleSplitChange(userId, event.target.value)}
+                        value={customSplits[p.id] || ''}
+                        onChange={(event) => handleSplitChange(p.id, event.target.value)}
                         className="md:col-span-2 rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="0.00"
                       />
@@ -477,3 +480,4 @@ const EditExpense: React.FC = () => {
 };
 
 export default EditExpense;
+
