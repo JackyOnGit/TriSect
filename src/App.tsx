@@ -72,6 +72,14 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/trip/:tripId/expense/:expenseId/edit"
+            element={
+              <ProtectedRoute>
+                <EditExpense />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
