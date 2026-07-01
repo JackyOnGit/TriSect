@@ -7,7 +7,7 @@ import { getTripParticipants } from '../services/participants';
 import { getTripCategoryDistributions } from '../services/categoryDistributions';
 import { calculateBalances, calculateSettlements } from '../services/settlement';
 import AddMemberModal from '../components/AddMemberModal';
-import AddParticipantModal from '../components/AddParticipantModal';
+import ManageParticipantsModal from '../components/ManageParticipantsModal';
 import ManageCategoryDistributionsModal from '../components/ManageCategoryDistributionsModal';
 import DeleteExpenseModal from '../components/DeleteExpenseModal';
 import { CategoryDistribution, Expense, Participant, Trip, TripMember } from '../types';
@@ -25,7 +25,7 @@ const TripDetail: React.FC = () => {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
-	const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] = useState(false);
+	const [isManageParticipantsModalOpen, setIsManageParticipantsModalOpen] = useState(false);
 	const [isManageDistributionsModalOpen, setIsManageDistributionsModalOpen] = useState(false);
 	const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
 
@@ -263,10 +263,10 @@ const TripDetail: React.FC = () => {
 							</p>
 						</div>
 						<button
-							onClick={() => setIsAddParticipantModalOpen(true)}
+							onClick={() => setIsManageParticipantsModalOpen(true)}
 							className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
 						>
-							+ Add Participant
+							Manage Participants
 						</button>
 					</div>
 
@@ -465,15 +465,18 @@ const TripDetail: React.FC = () => {
 					onClose={() => setIsAddMemberModalOpen(false)}
 					onMemberAdded={refreshMembers}
 				/>
-				<AddParticipantModal
+				<ManageParticipantsModal
 					tripId={trip.id}
-					isOpen={isAddParticipantModalOpen}
-					onClose={() => setIsAddParticipantModalOpen(false)}
-					onParticipantAdded={refreshParticipants}
+					participants={participants}
+					expenses={expenses}
+					isOpen={isManageParticipantsModalOpen}
+					onClose={() => setIsManageParticipantsModalOpen(false)}
+					onChanged={refreshParticipants}
 				/>
 				<ManageCategoryDistributionsModal
 					tripId={trip.id}
 					distributions={categoryDistributions}
+					expenses={expenses}
 					isOpen={isManageDistributionsModalOpen}
 					onClose={() => setIsManageDistributionsModalOpen(false)}
 					onChanged={refreshDistributions}

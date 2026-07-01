@@ -4,11 +4,12 @@ import {
 	updateCategoryDistribution,
 	deleteCategoryDistribution,
 } from '../services/categoryDistributions';
-import { CategoryDistribution } from '../types';
+import { CategoryDistribution, Expense } from '../types';
 
 interface ManageCategoryDistributionsModalProps {
 	tripId: string;
 	distributions: CategoryDistribution[];
+	expenses: Expense[];
 	isOpen: boolean;
 	onClose: () => void;
 	onChanged: () => void;
@@ -17,6 +18,7 @@ interface ManageCategoryDistributionsModalProps {
 const ManageCategoryDistributionsModal: React.FC<ManageCategoryDistributionsModalProps> = ({
 	tripId,
 	distributions,
+	expenses,
 	isOpen,
 	onClose,
 	onChanged,
@@ -86,6 +88,9 @@ const ManageCategoryDistributionsModal: React.FC<ManageCategoryDistributionsModa
 				distribution.id !== excludedId &&
 				distribution.category.trim().toLowerCase() === categoryName.trim().toLowerCase()
 		);
+
+	const isCategoryUsedInExpenses = (distributionId: string): boolean =>
+		expenses.some((e) => e.categoryId === distributionId);
 
 	const handleAdd = async () => {
 		const trimmedCategory = category.trim();
@@ -166,6 +171,13 @@ const ManageCategoryDistributionsModal: React.FC<ManageCategoryDistributionsModa
 	};
 
 	const handleDelete = async (distributionId: string) => {
+		if (isCategoryUsedInExpenses(distributionId)) {
+			setError(
+				'Cannot delete this category. There are expenses using this category. Please delete or modify those expenses first.'
+			);
+			return;
+		}
+
 		try {
 			setDeletingId(distributionId);
 			setError('');
