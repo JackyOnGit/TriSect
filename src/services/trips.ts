@@ -37,6 +37,23 @@ export const createTrip = async (
   return docRef.id;
 };
 
+const mapDocToTrip = (docSnap: { id: string; data: () => Record<string, any> }): Trip => {
+  const data = docSnap.data();
+  return {
+    id: docSnap.id,
+    name: data.name,
+    description: data.description,
+    startDate: data.startDate.toDate(),
+    endDate: data.endDate.toDate(),
+    budget: typeof data.budget === 'number' ? data.budget : undefined,
+    currency: typeof data.currency === 'string' ? data.currency : undefined,
+    createdBy: data.createdBy,
+    createdAt: data.createdAt.toDate(),
+    updatedAt: data.updatedAt.toDate(),
+    isSettled: data.isSettled,
+  };
+};
+
 export const getUserTrips = async (userId: string): Promise<Trip[]> => {
   // Query trips created by the user
   const createdQuery = query(collection(db, 'trips'), where('createdBy', '==', userId));
@@ -46,20 +63,7 @@ export const getUserTrips = async (userId: string): Promise<Trip[]> => {
   const tripsMap = new Map<string, Trip>();
 
   createdSnapshot.forEach((docSnap) => {
-    const data = docSnap.data();
-    tripsMap.set(docSnap.id, {
-      id: docSnap.id,
-      name: data.name,
-      description: data.description,
-      startDate: data.startDate.toDate(),
-      endDate: data.endDate.toDate(),
-      budget: typeof data.budget === 'number' ? data.budget : undefined,
-      currency: typeof data.currency === 'string' ? data.currency : undefined,
-      createdBy: data.createdBy,
-      createdAt: data.createdAt.toDate(),
-      updatedAt: data.updatedAt.toDate(),
-      isSettled: data.isSettled,
-    });
+    tripsMap.set(docSnap.id, mapDocToTrip(docSnap));
   });
 
   // Query all members subcollections for docs belonging to this user
@@ -69,24 +73,11 @@ export const getUserTrips = async (userId: string): Promise<Trip[]> => {
   // Fetch parent trip docs for any trips not already in the map
   const memberTripFetches = memberSnapshot.docs
     .map((memberDoc) => memberDoc.ref.parent.parent)
-    .filter((tripRef): tripRef is NonNullable<typeof tripRef> => tripRef !== null && !tripsMap.has(tripRef.id))
+    .filter((tripRef): tripRef is NonNullable<typeof tripRef> => tripRef != null && !tripsMap.has(tripRef.id))
     .map(async (tripRef) => {
       const tripSnap = await getDoc(tripRef);
       if (tripSnap.exists()) {
-        const data = tripSnap.data();
-        tripsMap.set(tripSnap.id, {
-          id: tripSnap.id,
-          name: data.name,
-          description: data.description,
-          startDate: data.startDate.toDate(),
-          endDate: data.endDate.toDate(),
-          budget: typeof data.budget === 'number' ? data.budget : undefined,
-          currency: typeof data.currency === 'string' ? data.currency : undefined,
-          createdBy: data.createdBy,
-          createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt.toDate(),
-          isSettled: data.isSettled,
-        });
+        tripsMap.set(tripSnap.id, mapDocToTrip(tripSnap));
       }
     });
 
