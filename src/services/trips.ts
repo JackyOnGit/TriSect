@@ -1,5 +1,6 @@
 import {
   collection,
+  collectionGroup,
   addDoc,
   getDocs,
   getDoc,
@@ -36,27 +37,53 @@ export const createTrip = async (
   return docRef.id;
 };
 
-export const getUserTrips = async (userId: string): Promise<Trip[]> => {
-  const q = query(collection(db, 'trips'), where('createdBy', '==', userId));
-  const querySnapshot = await getDocs(q);
+const mapDocToTrip = (docSnap: { id: string; data: () => Record<string, any> }): Trip => {
+  const data = docSnap.data();
+  return {
+    id: docSnap.id,
+    name: data.name,
+    description: data.description,
+    startDate: data.startDate.toDate(),
+    endDate: data.endDate.toDate(),
+    budget: typeof data.budget === 'number' ? data.budget : undefined,
+    currency: typeof data.currency === 'string' ? data.currency : undefined,
+    createdBy: data.createdBy,
+    createdAt: data.createdAt.toDate(),
+    updatedAt: data.updatedAt.toDate(),
+    isSettled: data.isSettled,
+  };
+};
 
-  const trips: Trip[] = [];
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    trips.push({
-      id: doc.id,
-      name: data.name,
-      description: data.description,
-      startDate: data.startDate.toDate(),
-      endDate: data.endDate.toDate(),
-      createdBy: data.createdBy,
-      createdAt: data.createdAt.toDate(),
-      updatedAt: data.updatedAt.toDate(),
-      isSettled: data.isSettled,
-    });
+export const getUserTrips = async (userId: string): Promise<Trip[]> => {
+  // Query trips created by the user
+  const createdQuery = query(collection(db, 'trips'), where('createdBy', '==', userId));
+  const createdSnapshot = await getDocs(createdQuery);
+
+  // Map of tripId -> Trip to avoid duplicates
+  const tripsMap = new Map<string, Trip>();
+
+  createdSnapshot.forEach((docSnap) => {
+    tripsMap.set(docSnap.id, mapDocToTrip(docSnap));
   });
 
-  return trips;
+  // Query all members subcollections for docs belonging to this user
+  const memberQuery = query(collectionGroup(db, 'members'), where('userId', '==', userId));
+  const memberSnapshot = await getDocs(memberQuery);
+
+  // Fetch parent trip docs for any trips not already in the map
+  const memberTripFetches = memberSnapshot.docs
+    .map((memberDoc) => memberDoc.ref.parent.parent)
+    .filter((tripRef): tripRef is NonNullable<typeof tripRef> => tripRef != null && !tripsMap.has(tripRef.id))
+    .map(async (tripRef) => {
+      const tripSnap = await getDoc(tripRef);
+      if (tripSnap.exists()) {
+        tripsMap.set(tripSnap.id, mapDocToTrip(tripSnap));
+      }
+    });
+
+  await Promise.all(memberTripFetches);
+
+  return Array.from(tripsMap.values());
 };
 
 export const getTripById = async (tripId: string): Promise<Trip | null> => {

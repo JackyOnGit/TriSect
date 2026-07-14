@@ -151,7 +151,7 @@ const TripDetail: React.FC = () => {
 	const formatCurrency = (value: number) =>
 		new Intl.NumberFormat('en-US', {
 			style: 'currency',
-			currency: 'USD',
+			currency: trip?.currency && trip.currency !== '€' ? trip.currency : 'EUR',
 		}).format(value);
 
 	const handleExpenseDeleted = async () => {
