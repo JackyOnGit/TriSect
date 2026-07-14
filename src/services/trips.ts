@@ -182,6 +182,10 @@ export const addMemberToTrip = async (
   await addTripMember(tripId, userId, email, displayName, role);
 };
 
+export const removeTripMember = async (tripId: string, memberId: string): Promise<void> => {
+  await deleteDoc(doc(db, 'trips', tripId, 'members', memberId));
+};
+
 export const getTripMembers = async (tripId: string): Promise<TripMember[]> => {
   const querySnapshot = await getDocs(collection(db, 'trips', tripId, 'members'));
 

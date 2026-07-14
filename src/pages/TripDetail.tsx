@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getTripById, getTripMembers } from '../services/trips';
+import { getTripById, getTripMembers, removeTripMember } from '../services/trips';
 import { getTripExpenses } from '../services/expenses';
 import { getTripParticipants } from '../services/participants';
 import { getTripCategoryDistributions } from '../services/categoryDistributions';
@@ -28,6 +28,8 @@ const TripDetail: React.FC = () => {
 	const [isManageParticipantsModalOpen, setIsManageParticipantsModalOpen] = useState(false);
 	const [isManageDistributionsModalOpen, setIsManageDistributionsModalOpen] = useState(false);
 	const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
+	const [memberToRemove, setMemberToRemove] = useState<TripMember | null>(null);
+	const [isRemovingMember, setIsRemovingMember] = useState(false);
 
 	const refreshMembers = async () => {
 		if (!tripId) return;
@@ -36,6 +38,21 @@ const TripDetail: React.FC = () => {
 			setMembers(latestMembers);
 		} catch (refreshError) {
 			console.error('Failed to refresh trip members:', refreshError);
+		}
+	};
+
+	const handleRemoveMember = async (member: TripMember) => {
+		if (!tripId) return;
+		setIsRemovingMember(true);
+		try {
+			await removeTripMember(tripId, member.userId);
+			await refreshMembers();
+		} catch (removeError) {
+			console.error('Failed to remove member:', removeError);
+			setError('Failed to remove member. Please try again.');
+		} finally {
+			setIsRemovingMember(false);
+			setMemberToRemove(null);
 		}
 	};
 
@@ -241,14 +258,51 @@ const TripDetail: React.FC = () => {
 					) : (
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 							{members.map((member) => (
-								<div key={member.userId} className="border border-gray-200 rounded-lg p-4">
-									<p className="text-lg font-semibold text-gray-900">{member.displayName}</p>
-									<p className="text-gray-600 text-sm">{member.email}</p>
-									<span className="inline-block mt-3 bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full">
-										{member.role}
-									</span>
+								<div key={member.userId} className="border border-gray-200 rounded-lg p-4 flex items-start justify-between gap-2">
+									<div>
+										<p className="text-lg font-semibold text-gray-900">{member.displayName}</p>
+										<p className="text-gray-600 text-sm">{member.email}</p>
+										<span className="inline-block mt-3 bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full">
+											{member.role}
+										</span>
+									</div>
+									{user?.uid === trip.createdBy && (
+										<button
+											onClick={() => setMemberToRemove(member)}
+											className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded shrink-0"
+										>
+											Remove
+										</button>
+									)}
 								</div>
 							))}
+						</div>
+					)}
+
+					{memberToRemove && (
+						<div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+							<div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
+								<h3 className="text-lg font-bold text-gray-900 mb-2">Remove Member</h3>
+								<p className="text-gray-600 mb-6">
+									Are you sure you want to remove <span className="font-semibold">{memberToRemove.displayName}</span> from this trip?
+								</p>
+								<div className="flex justify-end gap-3">
+									<button
+										onClick={() => setMemberToRemove(null)}
+										disabled={isRemovingMember}
+										className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
+									>
+										Cancel
+									</button>
+									<button
+										onClick={() => handleRemoveMember(memberToRemove)}
+										disabled={isRemovingMember}
+										className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+									>
+										{isRemovingMember ? 'Removing...' : 'Remove'}
+									</button>
+								</div>
+							</div>
 						</div>
 					)}
 				</section>
