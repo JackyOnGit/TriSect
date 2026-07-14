@@ -266,7 +266,7 @@ const TripDetail: React.FC = () => {
 											{member.role}
 										</span>
 									</div>
-									{user?.uid === trip.createdBy && (
+									{user?.uid === trip.createdBy && member.userId !== trip.createdBy && (
 										<button
 											onClick={() => setMemberToRemove(member)}
 											className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded shrink-0"
@@ -280,9 +280,14 @@ const TripDetail: React.FC = () => {
 					)}
 
 					{memberToRemove && (
-						<div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+						<div
+							className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+							role="dialog"
+							aria-modal="true"
+							aria-labelledby="remove-member-dialog-title"
+						>
 							<div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
-								<h3 className="text-lg font-bold text-gray-900 mb-2">Remove Member</h3>
+								<h3 id="remove-member-dialog-title" className="text-lg font-bold text-gray-900 mb-2">Remove Member</h3>
 								<p className="text-gray-600 mb-6">
 									Are you sure you want to remove <span className="font-semibold">{memberToRemove.displayName}</span> from this trip?
 								</p>
