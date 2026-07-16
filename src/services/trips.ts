@@ -37,6 +37,23 @@ export const createTrip = async (
   return docRef.id;
 };
 
+const mapDocToTrip = (docSnap: { id: string; data: () => Record<string, any> }): Trip => {
+  const data = docSnap.data();
+  return {
+    id: docSnap.id,
+    name: data.name,
+    description: data.description,
+    startDate: data.startDate.toDate(),
+    endDate: data.endDate.toDate(),
+    budget: typeof data.budget === 'number' ? data.budget : undefined,
+    currency: typeof data.currency === 'string' ? data.currency : undefined,
+    createdBy: data.createdBy,
+    createdAt: data.createdAt.toDate(),
+    updatedAt: data.updatedAt.toDate(),
+    isSettled: data.isSettled,
+  };
+};
+
 export const getUserTrips = async (userId: string): Promise<Trip[]> => {
   console.log('🔎 getUserTrips called with userId:', userId);
   
