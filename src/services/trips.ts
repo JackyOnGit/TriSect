@@ -1,5 +1,6 @@
 import {
   collection,
+  collectionGroup,
   addDoc,
   getDocs,
   getDoc,
@@ -172,6 +173,10 @@ export const addMemberToTrip = async (
       : email || 'Unknown User';
 
   await addTripMember(tripId, userId, email, displayName, role);
+};
+
+export const removeTripMember = async (tripId: string, memberId: string): Promise<void> => {
+  await deleteDoc(doc(db, 'trips', tripId, 'members', memberId));
 };
 
 export const getTripMembers = async (tripId: string): Promise<TripMember[]> => {
