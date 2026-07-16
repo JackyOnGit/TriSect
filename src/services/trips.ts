@@ -37,26 +37,45 @@ export const createTrip = async (
 };
 
 export const getUserTrips = async (userId: string): Promise<Trip[]> => {
-  const q = query(collection(db, 'trips'), where('createdBy', '==', userId));
-  const querySnapshot = await getDocs(q);
+  console.log('🔎 getUserTrips called with userId:', userId);
+  
+  // Query trips created by the user
+  const createdQuery = query(collection(db, 'trips'), where('createdBy', '==', userId));
+  const createdSnapshot = await getDocs(createdQuery);
+  
+  console.log('📋 Created trips found:', createdSnapshot.docs.length);
 
-  const trips: Trip[] = [];
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    trips.push({
-      id: doc.id,
-      name: data.name,
-      description: data.description,
-      startDate: data.startDate.toDate(),
-      endDate: data.endDate.toDate(),
-      createdBy: data.createdBy,
-      createdAt: data.createdAt.toDate(),
-      updatedAt: data.updatedAt.toDate(),
-      isSettled: data.isSettled,
-    });
+  const tripsMap = new Map<string, Trip>();
+
+  createdSnapshot.forEach((docSnap) => {
+    tripsMap.set(docSnap.id, mapDocToTrip(docSnap));
   });
 
-  return trips;
+  // Query all members subcollections for docs belonging to this user
+  const memberQuery = query(collectionGroup(db, 'members'), where('userId', '==', userId));
+  const memberSnapshot = await getDocs(memberQuery);
+  
+  console.log('👥 Member records found:', memberSnapshot.docs.length);
+  memberSnapshot.forEach(doc => {
+    console.log(`  - Found in trip: ${doc.ref.parent.parent?.id}, member userId: ${doc.data().userId}`);
+  });
+
+  // Fetch parent trip docs...
+  const memberTripFetches = memberSnapshot.docs
+    .map((memberDoc) => memberDoc.ref.parent.parent)
+    .filter((tripRef): tripRef is NonNullable<typeof tripRef> => tripRef != null && !tripsMap.has(tripRef.id))
+    .map(async (tripRef) => {
+      const tripSnap = await getDoc(tripRef);
+      if (tripSnap.exists()) {
+        console.log(`🎫 Added member trip: ${tripSnap.data().name}`);
+        tripsMap.set(tripSnap.id, mapDocToTrip(tripSnap));
+      }
+    });
+
+  await Promise.all(memberTripFetches);
+
+  console.log('🏁 Total trips returned:', tripsMap.size);
+  return Array.from(tripsMap.values());
 };
 
 export const getTripById = async (tripId: string): Promise<Trip | null> => {

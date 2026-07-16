@@ -23,18 +23,26 @@ const Dashboard: React.FC = () => {
     }
   }, [user]);
 
-  const loadTrips = async () => {
-    try {
-      if (user) {
-        const userTrips = await getUserTrips(user.uid);
-        setTrips(userTrips);
-      }
-    } catch (error) {
-      console.error('Failed to load trips:', error);
-    } finally {
-      setLoading(false);
+const loadTrips = async () => {
+  try {
+    if (user) {
+      console.log('🔍 Loading trips for user:', user.uid);
+      
+      const userTrips = await getUserTrips(user.uid);
+      
+      console.log('✅ Found trips:', userTrips.length);
+      userTrips.forEach(trip => {
+        console.log(`  - Trip: ${trip.name} (created by: ${trip.createdBy})`);
+      });
+      
+      setTrips(userTrips);
     }
-  };
+  } catch (error) {
+    console.error('Failed to load trips:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleLogout = async () => {
     try {
