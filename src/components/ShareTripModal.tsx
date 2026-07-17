@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getTripInviteLinks, generateInviteLink, revokeInviteLink } from '../services/trips';
 import { InviteLink } from '../types';
 import { formatInviteUrl } from '../utils/inviteLinks';
@@ -18,7 +18,7 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({ tripId, isOpen, onClose
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  const loadInviteLinks = async () => {
+  const loadInviteLinks = useCallback(async () => {
     setLoading(true);
     setError('');
 
@@ -31,7 +31,7 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({ tripId, isOpen, onClose
     } finally {
       setLoading(false);
     }
-  };
+  }, [tripId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -42,7 +42,7 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({ tripId, isOpen, onClose
     }
 
     loadInviteLinks();
-  }, [isOpen, tripId]);
+  }, [isOpen, loadInviteLinks]);
 
   useEffect(() => {
     if (!copiedCode) {

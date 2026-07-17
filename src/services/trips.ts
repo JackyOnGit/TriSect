@@ -119,11 +119,12 @@ const findInviteLinkByCode = async (
   const inviteCodeRef = doc(db, INVITE_CODE_LOOKUP_COLLECTION, normalizedCode);
   const inviteCodeSnap = await getDoc(inviteCodeRef);
   const inviteCodeData = inviteCodeSnap.data();
-  const tripId = typeof inviteCodeData?.tripId === 'string' ? inviteCodeData.tripId : '';
 
-  if (!inviteCodeSnap.exists() || !tripId) {
+  if (!inviteCodeSnap.exists() || typeof inviteCodeData?.tripId !== 'string') {
     return null;
   }
+
+  const { tripId } = inviteCodeData;
 
   const inviteRef = doc(db, 'trips', tripId, INVITE_LINK_COLLECTION, normalizedCode);
   const inviteSnap = await getDoc(inviteRef);
@@ -265,11 +266,12 @@ export const generateInviteLink = async (tripId: string, expiresInDays?: number)
   }
 
   const tripData = tripSnap.data();
-  const createdBy = typeof tripData.createdBy === 'string' ? tripData.createdBy : '';
 
-  if (!createdBy) {
+  if (typeof tripData.createdBy !== 'string') {
     throw new Error('Trip creator not found.');
   }
+
+  const { createdBy } = tripData;
 
   for (let attempt = 0; attempt < MAX_INVITE_CODE_GENERATION_ATTEMPTS; attempt += 1) {
     const code = generateUniqueCode();
@@ -376,9 +378,8 @@ export const joinTripViaCode = async (userId: string, code: string): Promise<voi
 
     const memberSnap = await transaction.get(memberRef);
     const tripData = tripSnap.data();
-    const createdBy = typeof tripData.createdBy === 'string' ? tripData.createdBy : '';
 
-    if (memberSnap.exists() || createdBy === userId) {
+    if (memberSnap.exists() || (typeof tripData.createdBy === 'string' && tripData.createdBy === userId)) {
       console.info('Skipping invite join because the user already belongs to the trip.');
       return;
     }
@@ -397,7 +398,7 @@ export const joinTripViaCode = async (userId: string, code: string): Promise<voi
     }
 
     const userData = userSnap.data();
-    const email = typeof userData.email === 'string' ? userData.email : '';
+    const email = typeof userData.email === 'string' ? userData.email : undefined;
     const displayName =
       typeof userData.displayName === 'string' && userData.displayName.trim().length > 0
         ? userData.displayName
