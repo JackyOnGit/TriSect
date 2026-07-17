@@ -33,6 +33,16 @@ export interface TripMember {
   status: 'invited' | 'joined' | 'declined';
 }
 
+export interface InviteLink {
+  code: string;
+  createdBy: string;
+  createdAt: Date;
+  expiresAt?: Date;
+  maxUses?: number;
+  currentUses: number;
+  status: 'active' | 'revoked';
+}
+
 // Participant type — a group (e.g. a family) that participates in expense splitting
 export interface Participant {
   id: string;

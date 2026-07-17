@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { registerUser } from '../services/auth';
 
 const Register: React.FC = () => {
@@ -9,6 +9,10 @@ const Register: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect');
+  const safeRedirectTo = redirectTo && redirectTo.startsWith('/') ? redirectTo : '/dashboard';
+  const isInviteRedirect = safeRedirectTo.startsWith('/join-trip');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +27,7 @@ const Register: React.FC = () => {
 
     try {
       await registerUser(email, password, displayName);
-      navigate('/dashboard');
+      navigate(safeRedirectTo, { replace: true });
     } catch (err: any) {
       setError(err.message || 'Failed to register');
     } finally {
@@ -36,6 +40,12 @@ const Register: React.FC = () => {
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
         <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center">TriSect</h1>
         <p className="text-center text-gray-600 mb-8">Create your account</p>
+
+        {isInviteRedirect && (
+          <div className="mb-6 rounded border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            Join trip after signing in.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
@@ -98,7 +108,10 @@ const Register: React.FC = () => {
 
         <p className="mt-6 text-center text-gray-600">
           Already have an account?{' '}
-          <Link to="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+          <Link
+            to={isInviteRedirect ? `/login?redirect=${encodeURIComponent(safeRedirectTo)}` : '/login'}
+            className="text-blue-600 hover:text-blue-700 font-medium"
+          >
             Login here
           </Link>
         </p>

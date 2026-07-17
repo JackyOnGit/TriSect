@@ -7,6 +7,7 @@ import { getTripParticipants } from '../services/participants';
 import { getTripCategoryDistributions } from '../services/categoryDistributions';
 import { calculateBalances, calculateSettlements } from '../services/settlement';
 import AddMemberModal from '../components/AddMemberModal';
+import ShareTripModal from '../components/ShareTripModal';
 import ManageParticipantsModal from '../components/ManageParticipantsModal';
 import ManageCategoryDistributionsModal from '../components/ManageCategoryDistributionsModal';
 import DeleteExpenseModal from '../components/DeleteExpenseModal';
@@ -25,6 +26,7 @@ const TripDetail: React.FC = () => {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+	const [isShareTripModalOpen, setIsShareTripModalOpen] = useState(false);
 	const [isManageParticipantsModalOpen, setIsManageParticipantsModalOpen] = useState(false);
 	const [isManageDistributionsModalOpen, setIsManageDistributionsModalOpen] = useState(false);
 	const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
@@ -222,12 +224,20 @@ const TripDetail: React.FC = () => {
 						</div>
 						<div className="flex flex-col items-start md:items-end gap-3">
 							{user?.uid === trip.createdBy && (
-								<button
-									onClick={() => navigate(`/trip/${trip.id}/edit`)}
-									className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-								>
-									Edit Trip
-								</button>
+								<div className="flex flex-wrap gap-2 md:justify-end">
+									<button
+										onClick={() => setIsShareTripModalOpen(true)}
+										className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+									>
+										Share Trip
+									</button>
+									<button
+										onClick={() => navigate(`/trip/${trip.id}/edit`)}
+										className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+									>
+										Edit Trip
+									</button>
+								</div>
 							)}
 							<div className="text-sm text-gray-600 bg-gray-100 rounded-lg px-4 py-3">
 								<p>
@@ -523,6 +533,11 @@ const TripDetail: React.FC = () => {
 					isOpen={isAddMemberModalOpen}
 					onClose={() => setIsAddMemberModalOpen(false)}
 					onMemberAdded={refreshMembers}
+				/>
+				<ShareTripModal
+					tripId={trip.id}
+					isOpen={isShareTripModalOpen}
+					onClose={() => setIsShareTripModalOpen(false)}
 				/>
 				<ManageParticipantsModal
 					tripId={trip.id}
