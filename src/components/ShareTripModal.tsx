@@ -53,12 +53,26 @@ const ShareTripModal: React.FC<ShareTripModalProps> = ({ tripId, isOpen, onClose
     return () => window.clearTimeout(timeoutId);
   }, [copiedCode]);
 
+  const getExpirationValidationError = (value: string): string | null => {
+    if (value.trim().length === 0) {
+      return null;
+    }
+
+    const parsedValue = Number(value);
+    if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+      return 'Expiration must be a positive number of days or left blank.';
+    }
+
+    return null;
+  };
+
   const handleGenerateLink = async () => {
     const trimmedValue = expiresInDays.trim();
     const parsedValue = trimmedValue.length > 0 ? Number(trimmedValue) : undefined;
+    const expirationError = getExpirationValidationError(expiresInDays);
 
-    if (trimmedValue.length > 0 && (!Number.isFinite(parsedValue) || Number(parsedValue) <= 0)) {
-      setError('Expiration must be a positive number of days or left blank.');
+    if (expirationError) {
+      setError(expirationError);
       return;
     }
 

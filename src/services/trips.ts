@@ -22,6 +22,7 @@ const INVITE_LINK_COLLECTION = 'inviteLinks';
 const INVITE_CODE_LOOKUP_COLLECTION = 'inviteCodes';
 const MAX_INVITE_CODE_GENERATION_ATTEMPTS = 5;
 const INVITE_CODE_EXISTS_ERROR = 'INVITE_CODE_EXISTS';
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export interface InviteCodeValidationResult {
   tripId: string | null;
@@ -290,7 +291,7 @@ export const generateInviteLink = async (tripId: string, expiresInDays?: number)
     };
 
     if (typeof expiresInDays === 'number' && Number.isFinite(expiresInDays) && expiresInDays > 0) {
-      const expiresAt = Timestamp.fromDate(new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000));
+      const expiresAt = Timestamp.fromDate(new Date(Date.now() + expiresInDays * MILLISECONDS_PER_DAY));
       invitePayload.expiresAt = expiresAt;
       inviteCodePayload.expiresAt = expiresAt;
     }
@@ -378,6 +379,7 @@ export const joinTripViaCode = async (userId: string, code: string): Promise<voi
     const createdBy = typeof tripData.createdBy === 'string' ? tripData.createdBy : '';
 
     if (memberSnap.exists() || createdBy === userId) {
+      console.info('Skipping invite join because the user already belongs to the trip.');
       return;
     }
 

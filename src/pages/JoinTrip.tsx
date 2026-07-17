@@ -15,7 +15,7 @@ const JoinTrip: React.FC = () => {
 
   const code = useMemo(() => searchParams.get('code')?.trim().toUpperCase() ?? '', [searchParams]);
   const redirectPath = `${location.pathname}${location.search}`;
-  const authMessage = 'Join trip after signing in';
+  const authPromptMessage = 'Join trip after signing in';
 
   useEffect(() => {
     let isCancelled = false;
@@ -141,7 +141,7 @@ const JoinTrip: React.FC = () => {
             </div>
           ) : (
             <div className="mt-8 rounded-lg border border-blue-200 bg-blue-50 px-6 py-6 text-center">
-              <p className="text-lg font-semibold text-gray-900">{authMessage}</p>
+              <p className="text-lg font-semibold text-gray-900">{authPromptMessage}</p>
               <p className="mt-2 text-sm text-gray-600">
                 Sign in or create an account, and we&apos;ll connect you to this trip automatically.
               </p>

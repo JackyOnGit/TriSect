@@ -1,6 +1,6 @@
 const INVITE_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const DEFAULT_INVITE_CODE_LENGTH = 8;
-const FALLBACK_APP_URL = 'https://tri-sect.vercel.app';
+const DEFAULT_APP_URL = import.meta.env.VITE_APP_URL || 'https://tri-sect.vercel.app';
 
 export const generateUniqueCode = (length = DEFAULT_INVITE_CODE_LENGTH): string => {
   const characters = INVITE_CODE_ALPHABET;
@@ -18,6 +18,6 @@ export const generateUniqueCode = (length = DEFAULT_INVITE_CODE_LENGTH): string 
 };
 
 export const formatInviteUrl = (code: string): string => {
-  const origin = typeof window !== 'undefined' ? window.location.origin : FALLBACK_APP_URL;
+  const origin = typeof window !== 'undefined' ? window.location.origin : DEFAULT_APP_URL;
   return `${origin}/join-trip?code=${encodeURIComponent(code)}`;
 };

@@ -43,7 +43,7 @@ const Register: React.FC = () => {
 
         {isInviteRedirect && (
           <div className="mb-6 rounded border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-            Join trip after signing in.
+            Join trip after registering.
           </div>
         )}
 
