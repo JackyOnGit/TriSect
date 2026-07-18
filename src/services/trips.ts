@@ -380,8 +380,7 @@ export const joinTripViaCode = async (userId: string, code: string): Promise<voi
     const tripData = tripSnap.data();
 
     if (memberSnap.exists() || (typeof tripData.createdBy === 'string' && tripData.createdBy === userId)) {
-      console.info('Skipping invite join because the user already belongs to the trip.');
-      return;
+      throw new Error('You already belong to this trip.');
     }
 
     const userSnap = await transaction.get(userRef);
