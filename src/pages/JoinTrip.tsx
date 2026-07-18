@@ -17,6 +17,7 @@ const JoinTrip: React.FC = () => {
   const redirectPath = `${location.pathname}${location.search}`;
   const authPromptMessage = 'Join trip after signing in';
 
+  // Validate the invite code on mount
   useEffect(() => {
     let isCancelled = false;
 
@@ -66,13 +67,13 @@ const JoinTrip: React.FC = () => {
     };
   }, [code]);
 
+  // Attempt to join the trip when conditions are met
   useEffect(() => {
     if (authLoading || !user || !tripId || error || joinState !== 'idle') {
       return;
     }
 
     let isCancelled = false;
-    let timeoutId: number | undefined;
 
     const joinTrip = async () => {
       setJoinState('joining');
@@ -80,14 +81,9 @@ const JoinTrip: React.FC = () => {
       try {
         await joinTripViaCode(user.uid, code);
 
-        if (isCancelled) {
-          return;
+        if (!isCancelled) {
+          setJoinState('success');
         }
-
-        setJoinState('success');
-        timeoutId = window.setTimeout(() => {
-          navigate(`/trip/${tripId}`, { replace: true });
-        }, 1200);
       } catch (joinError: any) {
         console.error('Failed to join trip via invite code:', joinError);
         if (!isCancelled) {
@@ -101,11 +97,15 @@ const JoinTrip: React.FC = () => {
 
     return () => {
       isCancelled = true;
-      if (typeof timeoutId === 'number') {
-        window.clearTimeout(timeoutId);
-      }
     };
-  }, [authLoading, code, error, joinState, navigate, tripId, user]);
+  }, [authLoading, code, error, joinState, tripId, user]);
+
+  // Handle successful join by redirecting
+  useEffect(() => {
+    if (joinState === 'success' && tripId) {
+      navigate(`/trip/${tripId}`, { replace: true });
+    }
+  }, [joinState, tripId, navigate]);
 
   const loginUrl = `/login?redirect=${encodeURIComponent(redirectPath)}`;
   const registerUrl = `/register?redirect=${encodeURIComponent(redirectPath)}`;
