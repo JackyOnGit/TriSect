@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getTripById, getTripMembers, removeTripMember } from '../services/trips';
+import { getTripById, getTripMembers, removeTripMember, deleteTrip } from '../services/trips';
 import { getTripExpenses } from '../services/expenses';
 import { getTripParticipants } from '../services/participants';
 import { getTripCategoryDistributions } from '../services/categoryDistributions';
@@ -32,6 +32,8 @@ const TripDetail: React.FC = () => {
 	const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
 	const [memberToRemove, setMemberToRemove] = useState<TripMember | null>(null);
 	const [isRemovingMember, setIsRemovingMember] = useState(false);
+	const [showDeleteTripConfirm, setShowDeleteTripConfirm] = useState(false);
+	const [isDeletingTrip, setIsDeletingTrip] = useState(false);
 
 	const refreshMembers = async () => {
 		if (!tripId) return;
@@ -178,6 +180,21 @@ const TripDetail: React.FC = () => {
 		setExpenseToDelete(null);
 	};
 
+	const handleDeleteTrip = async () => {
+		if (!tripId) return;
+		setIsDeletingTrip(true);
+		try {
+			await deleteTrip(tripId);
+			navigate('/dashboard');
+		} catch (deleteError) {
+			console.error('Failed to delete trip:', deleteError);
+			setError('Failed to delete trip. Please try again.');
+			setShowDeleteTripConfirm(false);
+		} finally {
+			setIsDeletingTrip(false);
+		}
+	};
+
 	if (authLoading || loading) {
 		return (
 			<div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -236,6 +253,12 @@ const TripDetail: React.FC = () => {
 										className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
 									>
 										Edit Trip
+									</button>
+									<button
+										onClick={() => setShowDeleteTripConfirm(true)}
+										className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+									>
+										Delete Trip
 									</button>
 								</div>
 							)}
@@ -564,6 +587,38 @@ const TripDetail: React.FC = () => {
 					onDeleted={handleExpenseDeleted}
 				/>
 			</main>
+
+			{showDeleteTripConfirm && (
+				<div
+					className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+					role="dialog"
+					aria-modal="true"
+					aria-labelledby="delete-trip-dialog-title"
+				>
+					<div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
+						<h3 id="delete-trip-dialog-title" className="text-lg font-bold text-gray-900 mb-2">Delete Trip</h3>
+						<p className="text-gray-600 mb-6">
+							Are you sure you want to delete <span className="font-semibold">{trip.name}</span>? This action cannot be undone.
+						</p>
+						<div className="flex justify-end gap-3">
+							<button
+								onClick={() => setShowDeleteTripConfirm(false)}
+								disabled={isDeletingTrip}
+								className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={handleDeleteTrip}
+								disabled={isDeletingTrip}
+								className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+							>
+								{isDeletingTrip ? 'Deleting...' : 'Delete'}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 };
