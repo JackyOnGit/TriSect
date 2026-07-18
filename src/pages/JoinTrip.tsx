@@ -87,8 +87,13 @@ const JoinTrip: React.FC = () => {
       } catch (joinError: any) {
         console.error('Failed to join trip via invite code:', joinError);
         if (!isCancelled) {
-          setError(joinError?.message || 'Unable to join this trip right now. Please try again.');
-          setJoinState('idle');
+          // Handle "already belongs to trip" gracefully - just redirect without error
+          if (joinError?.message?.includes('already')) {
+            setJoinState('success');
+          } else {
+            setError(joinError?.message || 'Unable to join this trip right now. Please try again.');
+            setJoinState('idle');
+          }
         }
       }
     };
