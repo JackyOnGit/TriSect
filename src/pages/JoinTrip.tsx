@@ -68,6 +68,7 @@ const JoinTrip: React.FC = () => {
   }, [code]);
 
   // Attempt to join the trip when conditions are met
+  // IMPORTANT: Do NOT include joinState in dependency array - it would cause self-cancellation
   useEffect(() => {
     if (authLoading || !user || !tripId || error || joinState !== 'idle') {
       return;
@@ -103,7 +104,7 @@ const JoinTrip: React.FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [authLoading, code, error, joinState, tripId, user]);
+  }, [authLoading, code, error, tripId, user]); // Note: joinState is NOT in this array
 
   // Handle successful join by redirecting
   useEffect(() => {
