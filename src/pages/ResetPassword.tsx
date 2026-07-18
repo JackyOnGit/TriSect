@@ -4,7 +4,7 @@ import { resetPassword } from '../services/auth';
 
 const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const code = searchParams.get('oobCode') || searchParams.get('code') || '';
+  const code = searchParams.get('oobCode') || '';
   const navigate = useNavigate();
 
   const [password, setPassword] = useState('');
@@ -39,8 +39,7 @@ const ResetPassword: React.FC = () => {
       await resetPassword(code, password);
       navigate('/login?reset=success', { replace: true });
     } catch (err: any) {
-      const message: string = err?.message || '';
-      if (message.includes('expired') || message.includes('invalid-action-code') || err?.code === 'auth/invalid-action-code' || err?.code === 'auth/expired-action-code') {
+      if (err?.code === 'auth/invalid-action-code' || err?.code === 'auth/expired-action-code') {
         setError('This reset link has expired or is invalid. Please request a new password reset.');
       } else if (err?.code === 'auth/weak-password') {
         setError('Password is too weak. Please choose a stronger password.');
