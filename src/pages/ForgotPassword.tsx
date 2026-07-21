@@ -19,7 +19,8 @@ const ForgotPassword: React.FC = () => {
     } catch (err: any) {
       const code = err?.code as string | undefined;
       if (code === 'auth/user-not-found') {
-        setError('No account found with this email address.');
+        // Don't reveal whether the email exists – show the same success state
+        setSubmitted(true);
       } else if (code === 'auth/invalid-email') {
         setError('Please enter a valid email address.');
       } else {
