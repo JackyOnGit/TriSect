@@ -36,7 +36,7 @@ const ForgotPassword: React.FC = () => {
               <ul className="list-disc list-inside space-y-1">
                 <li>Check your inbox for the password reset link (also check your spam or promotions folder).</li>
                 <li>Click the link and reset your password on the confirmation page.</li>
-                <li>Once your password is reset, you will see a confirmation message — then manually navigate back to the Trisect login page or click the back button in your browser.</li>
+                <li>Once your password is reset, you will see a confirmation message — then manually navigate back to the TriSect login page or click the back button in your browser.</li>
               </ul>
             </div>
             <p className="text-center text-gray-600">
