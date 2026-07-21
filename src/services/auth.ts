@@ -3,6 +3,8 @@ import {
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
+  sendPasswordResetEmail as firebaseSendPasswordResetEmail,
+  confirmPasswordReset as firebaseConfirmPasswordReset,
   User as FirebaseUser,
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
@@ -45,4 +47,12 @@ export const logoutUser = async (): Promise<void> => {
 
 export const getCurrentUser = (): FirebaseUser | null => {
   return auth.currentUser;
+};
+
+export const sendPasswordResetEmail = async (email: string): Promise<void> => {
+  await firebaseSendPasswordResetEmail(auth, email);
+};
+
+export const confirmPasswordReset = async (oobCode: string, newPassword: string): Promise<void> => {
+  await firebaseConfirmPasswordReset(auth, oobCode, newPassword);
 };

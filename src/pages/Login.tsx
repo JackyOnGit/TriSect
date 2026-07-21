@@ -12,6 +12,7 @@ const Login: React.FC = () => {
   const redirectTo = searchParams.get('redirect');
   const safeRedirectTo = redirectTo && redirectTo.startsWith('/') ? redirectTo : '/dashboard';
   const isInviteRedirect = safeRedirectTo.startsWith('/join-trip');
+  const resetSuccess = searchParams.get('reset') === 'success';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +34,12 @@ const Login: React.FC = () => {
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
         <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center">TriSect</h1>
         <p className="text-center text-gray-600 mb-8">Share trip expenses fairly</p>
+
+        {resetSuccess && (
+          <div className="mb-6 rounded border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">
+            Password reset successful! You can now log in with your new password.
+          </div>
+        )}
 
         {isInviteRedirect && (
           <div className="mb-6 rounded border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
@@ -73,6 +80,12 @@ const Login: React.FC = () => {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="••••••••"
             />
+          </div>
+
+          <div className="text-right">
+            <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700">
+              Forgot password?
+            </Link>
           </div>
 
           <button
