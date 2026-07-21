@@ -10,6 +10,7 @@ import TripDetail from './pages/TripDetail';
 import EditTrip from './pages/EditTrip';
 import EditExpense from './pages/EditExpense';
 import JoinTrip from './pages/JoinTrip';
+import ForgotPassword from './pages/ForgotPassword';
 import NotFound from './pages/NotFound';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -34,6 +35,7 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/join-trip" element={<JoinTrip />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route
             path="/dashboard"
             element={
