@@ -5,13 +5,14 @@ import path from 'node:path';
 let version = 'dev';
 
 try {
-  version = execSync('git rev-parse --short=8 HEAD', { encoding: 'utf8' }).trim();
+  const gitHash = execSync('git rev-parse --short=8 HEAD', { encoding: 'utf8' }).trim();
+  if (/^[0-9a-f]{1,40}$/i.test(gitHash)) {
+    version = gitHash;
+  } else {
+    console.warn('Invalid git hash format, using dev version');
+  }
 } catch {
-  // Falls back to "dev" when git metadata is unavailable.
-}
-
-if (!/^[0-9a-f]{8}$/i.test(version)) {
-  version = 'dev';
+  console.warn('Git metadata unavailable, using dev version');
 }
 
 const versionFilePath = path.resolve(process.cwd(), 'src', 'version.ts');
