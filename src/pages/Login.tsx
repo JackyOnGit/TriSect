@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { loginUser } from '../services/auth';
+import { APP_VERSION } from '../version';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -105,6 +106,9 @@ const Login: React.FC = () => {
           <Link to="/register" className="text-blue-600 hover:text-blue-700 font-medium">
             Register here
           </Link>
+        </p>
+        <p className="mt-2 text-center text-xs text-gray-400">
+          Version: {APP_VERSION}
         </p>
       </div>
     </div>
