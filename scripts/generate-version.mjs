@@ -7,6 +7,7 @@ let version = 'dev';
 try {
   version = execSync('git rev-parse --short=8 HEAD', { encoding: 'utf8' }).trim();
 } catch {
+  // Falls back to "dev" when git metadata is unavailable.
 }
 
 const versionFilePath = path.resolve(process.cwd(), 'src', 'version.ts');
