@@ -10,6 +10,10 @@ try {
   // Falls back to "dev" when git metadata is unavailable.
 }
 
+if (!/^[0-9a-f]{7,40}$/i.test(version)) {
+  version = 'dev';
+}
+
 const versionFilePath = path.resolve(process.cwd(), 'src', 'version.ts');
 writeFileSync(
   versionFilePath,
