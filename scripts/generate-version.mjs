@@ -10,7 +10,7 @@ try {
   // Falls back to "dev" when git metadata is unavailable.
 }
 
-if (!/^[0-9a-f]{8,40}$/i.test(version)) {
+if (!/^[0-9a-f]{8}$/i.test(version)) {
   version = 'dev';
 }
 
