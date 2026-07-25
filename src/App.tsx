@@ -10,6 +10,7 @@ import AddExpense from './pages/AddExpense';
 import TripDetail from './pages/TripDetail';
 import EditTrip from './pages/EditTrip';
 import EditExpense from './pages/EditExpense';
+import JoinTrip from './pages/JoinTrip';
 import NotFound from './pages/NotFound';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
