@@ -10,6 +10,7 @@ import AddMemberModal from '../components/AddMemberModal';
 import ManageParticipantsModal from '../components/ManageParticipantsModal';
 import ManageCategoryDistributionsModal from '../components/ManageCategoryDistributionsModal';
 import DeleteExpenseModal from '../components/DeleteExpenseModal';
+import ShareTripModal from '../components/ShareTripModal';
 import { CategoryDistribution, Expense, Participant, Trip, TripMember } from '../types';
 
 const TripDetail: React.FC = () => {
@@ -33,7 +34,7 @@ const TripDetail: React.FC = () => {
 	const [isDeletingTrip, setIsDeletingTrip] = useState(false);
 	const [showDeleteTripModal, setShowDeleteTripModal] = useState(false);
 	const [deleteTripError, setDeleteTripError] = useState('');
-	const [shareCopied, setShareCopied] = useState(false);
+	const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
 	const refreshMembers = async () => {
 		if (!tripId) return;
@@ -194,17 +195,6 @@ const TripDetail: React.FC = () => {
 		}
 	};
 
-	const handleShareLink = async () => {
-		try {
-			await navigator.clipboard.writeText(window.location.href);
-			setShareCopied(true);
-			setTimeout(() => setShareCopied(false), 2000);
-		} catch {
-			// Fallback: select the URL from the address bar
-			window.prompt('Copy this link:', window.location.href);
-		}
-	};
-
 	if (authLoading || loading) {
 		return (
 			<div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -252,10 +242,10 @@ const TripDetail: React.FC = () => {
 						<div className="flex flex-col items-start md:items-end gap-3">
 							<div className="flex flex-wrap gap-2">
 								<button
-									onClick={handleShareLink}
+									onClick={() => setIsShareModalOpen(true)}
 									className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded"
 								>
-									{shareCopied ? 'Link copied!' : 'Share link'}
+									Share link
 								</button>
 								{user?.uid === trip.createdBy && (
 									<>
@@ -568,6 +558,11 @@ const TripDetail: React.FC = () => {
 					isOpen={isAddMemberModalOpen}
 					onClose={() => setIsAddMemberModalOpen(false)}
 					onMemberAdded={refreshMembers}
+				/>
+				<ShareTripModal
+					tripId={trip.id}
+					isOpen={isShareModalOpen}
+					onClose={() => setIsShareModalOpen(false)}
 				/>
 				<ManageParticipantsModal
 					tripId={trip.id}
