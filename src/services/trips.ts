@@ -156,28 +156,37 @@ export const getUserTrips = async (userId: string): Promise<Trip[]> => {
     tripsMap.set(docSnap.id, mapDocToTrip(docSnap));
   });
 
-  // Query all members subcollections for docs belonging to this user
-  const memberQuery = query(collectionGroup(db, 'members'), where('userId', '==', userId));
-  const memberSnapshot = await getDocs(memberQuery);
-  
-  console.log('👥 Member records found:', memberSnapshot.docs.length);
-  memberSnapshot.forEach(doc => {
-    console.log(`  - Found in trip: ${doc.ref.parent.parent?.id}, member userId: ${doc.data().userId}`);
-  });
-
-  // Fetch parent trip docs...
-  const memberTripFetches = memberSnapshot.docs
-    .map((memberDoc) => memberDoc.ref.parent.parent)
-    .filter((tripRef): tripRef is NonNullable<typeof tripRef> => tripRef != null && !tripsMap.has(tripRef.id))
-    .map(async (tripRef) => {
-      const tripSnap = await getDoc(tripRef);
-      if (tripSnap.exists()) {
-        console.log(`🎫 Added member trip: ${tripSnap.data().name}`);
-        tripsMap.set(tripSnap.id, mapDocToTrip(tripSnap));
-      }
+  // Query all members subcollections for docs belonging to this user.
+  // Wrapped in try/catch so that a Firestore permissions error on the
+  // collectionGroup query does not prevent the user's own created trips
+  // from being returned (which are already in tripsMap at this point).
+  try {
+    const memberQuery = query(collectionGroup(db, 'members'), where('userId', '==', userId));
+    const memberSnapshot = await getDocs(memberQuery);
+    
+    console.log('👥 Member records found:', memberSnapshot.docs.length);
+    memberSnapshot.forEach(doc => {
+      console.log(`  - Found in trip: ${doc.ref.parent.parent?.id}, member userId: ${doc.data().userId}`);
     });
 
-  await Promise.all(memberTripFetches);
+    // Fetch parent trip docs...
+    const memberTripFetches = memberSnapshot.docs
+      .map((memberDoc) => memberDoc.ref.parent.parent)
+      .filter((tripRef): tripRef is NonNullable<typeof tripRef> => tripRef != null && !tripsMap.has(tripRef.id))
+      .map(async (tripRef) => {
+        const tripSnap = await getDoc(tripRef);
+        if (tripSnap.exists()) {
+          console.log(`🎫 Added member trip: ${tripSnap.data().name}`);
+          tripsMap.set(tripSnap.id, mapDocToTrip(tripSnap));
+        }
+      });
+
+    await Promise.all(memberTripFetches);
+  } catch (memberQueryError) {
+    // This typically means Firestore rules don't yet allow collectionGroup reads.
+    // The creator's trips are still returned from the first query above.
+    console.warn('Could not fetch member trips (check Firestore rules):', memberQueryError);
+  }
 
   console.log('🏁 Total trips returned:', tripsMap.size);
   return Array.from(tripsMap.values());
