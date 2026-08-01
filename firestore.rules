@@ -44,7 +44,10 @@ service cloud.firestore {
 
       // ── Members subcollection ─────────────────────────────────────────────
       match /members/{memberId} {
-        allow read: if isTripMember(tripId);
+        // Trip members can read all members; an authenticated user can always
+        // read their own doc (needed so the join transaction can check whether
+        // they are already a member before creating the doc).
+        allow read: if isTripMember(tripId) || (isSignedIn() && memberId == request.auth.uid);
         // Creator can add anyone; a user can add themselves (via invite link).
         allow create: if isSignedIn() && (
           isTripCreator(tripId) ||

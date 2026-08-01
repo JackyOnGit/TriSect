@@ -413,7 +413,6 @@ export const joinTripViaCode = async (userId: string, code: string): Promise<voi
     throw new Error('This invite link is invalid.');
   }
 
-  const tripRef = doc(db, 'trips', inviteRecord.tripId);
   const memberRef = doc(db, 'trips', inviteRecord.tripId, 'members', userId);
   const userRef = doc(db, 'users', userId);
 
@@ -424,16 +423,18 @@ export const joinTripViaCode = async (userId: string, code: string): Promise<voi
       throw new Error('This invite link is invalid.');
     }
 
-    const tripSnap = await transaction.get(tripRef);
+    const inviteLink = mapDocToInviteLink(inviteSnap);
+    const validationError = getInviteLinkValidationError(inviteLink);
 
-    if (!tripSnap.exists()) {
-      throw new Error('Trip not found.');
+    if (validationError) {
+      throw new Error(validationError);
     }
 
+    // Check if the user is already a member or is the trip creator
+    // (inviteLink.createdBy is the trip creator's uid).
     const memberSnap = await transaction.get(memberRef);
-    const tripData = tripSnap.data();
 
-    if (memberSnap.exists() || (typeof tripData.createdBy === 'string' && tripData.createdBy === userId)) {
+    if (memberSnap.exists() || inviteLink.createdBy === userId) {
       throw new Error('You already belong to this trip.');
     }
 
@@ -441,13 +442,6 @@ export const joinTripViaCode = async (userId: string, code: string): Promise<voi
 
     if (!userSnap.exists()) {
       throw new Error('User account not found.');
-    }
-
-    const inviteLink = mapDocToInviteLink(inviteSnap);
-    const validationError = getInviteLinkValidationError(inviteLink);
-
-    if (validationError) {
-      throw new Error(validationError);
     }
 
     const userData = userSnap.data();

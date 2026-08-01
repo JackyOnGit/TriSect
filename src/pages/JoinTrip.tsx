@@ -17,7 +17,8 @@ const JoinTrip: React.FC = () => {
   const redirectPath = `${location.pathname}${location.search}`;
   const authPromptMessage = 'Join trip after signing in';
 
-  // Validate the invite code on mount
+  // Validate the invite code once authentication has resolved and the user is signed in.
+  // Validation reads protected Firestore documents so it must not run while unauthenticated.
   useEffect(() => {
     let isCancelled = false;
 
@@ -25,6 +26,17 @@ const JoinTrip: React.FC = () => {
       setTripId(null);
       setValidationLoading(false);
       setError('This invite link is invalid.');
+      return;
+    }
+
+    // Wait until the auth state is known.
+    if (authLoading) {
+      return;
+    }
+
+    // Not signed in yet – skip validation and show the login/register prompt.
+    if (!user) {
+      setValidationLoading(false);
       return;
     }
 
@@ -65,7 +77,7 @@ const JoinTrip: React.FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [code]);
+  }, [code, user, authLoading]);
 
   // Attempt to join the trip when conditions are met
   // IMPORTANT: Do NOT include joinState in dependency array - it would cause self-cancellation
@@ -106,12 +118,12 @@ const JoinTrip: React.FC = () => {
     };
   }, [authLoading, code, error, tripId, user]); // Note: joinState is NOT in this array
 
-  // Handle successful join by redirecting
+  // Handle successful join by redirecting to the dashboard ("My Trips")
   useEffect(() => {
-    if (joinState === 'success' && tripId) {
-      navigate(`/trip/${tripId}`, { replace: true });
+    if (joinState === 'success') {
+      navigate('/dashboard', { replace: true });
     }
-  }, [joinState, tripId, navigate]);
+  }, [joinState, navigate]);
 
   const loginUrl = `/login?redirect=${encodeURIComponent(redirectPath)}`;
   const registerUrl = `/register?redirect=${encodeURIComponent(redirectPath)}`;
