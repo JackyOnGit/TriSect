@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { loginUser } from '../services/auth';
 import { APP_VERSION } from '../version';
 
@@ -10,6 +10,10 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect');
+  const safeRedirectTo = redirectTo && redirectTo.startsWith('/') ? redirectTo : '/dashboard';
+  const isInviteRedirect = safeRedirectTo.startsWith('/join-trip');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,7 +22,7 @@ const Login: React.FC = () => {
 
     try {
       await loginUser(email, password);
-      navigate('/dashboard');
+      navigate(safeRedirectTo, { replace: true });
     } catch (err: any) {
       setError(err.message || 'Failed to login');
     } finally {
@@ -31,6 +35,12 @@ const Login: React.FC = () => {
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
         <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center">TriSect</h1>
         <p className="text-center text-gray-600 mb-8">Share trip expenses fairly</p>
+
+        {isInviteRedirect && (
+          <div className="mb-6 rounded border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            Join trip after signing in.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
@@ -103,7 +113,10 @@ const Login: React.FC = () => {
 
         <p className="mt-6 text-center text-gray-600">
           Don't have an account?{' '}
-          <Link to="/register" className="text-blue-600 hover:text-blue-700 font-medium">
+          <Link
+            to={isInviteRedirect ? `/register?redirect=${encodeURIComponent(safeRedirectTo)}` : '/register'}
+            className="text-blue-600 hover:text-blue-700 font-medium"
+          >
             Register here
           </Link>
         </p>

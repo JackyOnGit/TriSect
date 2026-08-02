@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getTripById, getTripMembers, removeTripMember } from '../services/trips';
+import { getTripById, getTripMembers, removeTripMember, deleteTrip } from '../services/trips';
 import { getTripExpenses } from '../services/expenses';
 import { getTripParticipants } from '../services/participants';
 import { getTripCategoryDistributions } from '../services/categoryDistributions';
@@ -10,6 +10,7 @@ import AddMemberModal from '../components/AddMemberModal';
 import ManageParticipantsModal from '../components/ManageParticipantsModal';
 import ManageCategoryDistributionsModal from '../components/ManageCategoryDistributionsModal';
 import DeleteExpenseModal from '../components/DeleteExpenseModal';
+import ShareTripModal from '../components/ShareTripModal';
 import { CategoryDistribution, Expense, Participant, Trip, TripMember } from '../types';
 
 const TripDetail: React.FC = () => {
@@ -30,6 +31,10 @@ const TripDetail: React.FC = () => {
 	const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
 	const [memberToRemove, setMemberToRemove] = useState<TripMember | null>(null);
 	const [isRemovingMember, setIsRemovingMember] = useState(false);
+	const [isDeletingTrip, setIsDeletingTrip] = useState(false);
+	const [showDeleteTripModal, setShowDeleteTripModal] = useState(false);
+	const [deleteTripError, setDeleteTripError] = useState('');
+	const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
 	const refreshMembers = async () => {
 		if (!tripId) return;
@@ -176,6 +181,20 @@ const TripDetail: React.FC = () => {
 		setExpenseToDelete(null);
 	};
 
+	const handleDeleteTrip = async () => {
+		if (!tripId) return;
+		setIsDeletingTrip(true);
+		setDeleteTripError('');
+		try {
+			await deleteTrip(tripId);
+			navigate('/dashboard');
+		} catch (deleteError: any) {
+			console.error('Failed to delete trip:', deleteError);
+			setDeleteTripError(deleteError?.message || 'Failed to delete trip. Please try again.');
+			setIsDeletingTrip(false);
+		}
+	};
+
 	if (authLoading || loading) {
 		return (
 			<div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -221,14 +240,30 @@ const TripDetail: React.FC = () => {
 							<p className="text-gray-600 mt-2">{trip.description || 'No description provided.'}</p>
 						</div>
 						<div className="flex flex-col items-start md:items-end gap-3">
-							{user?.uid === trip.createdBy && (
+							<div className="flex flex-wrap gap-2">
 								<button
-									onClick={() => navigate(`/trip/${trip.id}/edit`)}
-									className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+									onClick={() => setIsShareModalOpen(true)}
+									className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded"
 								>
-									Edit Trip
+									Share link
 								</button>
-							)}
+								{user?.uid === trip.createdBy && (
+									<>
+										<button
+											onClick={() => navigate(`/trip/${trip.id}/edit`)}
+											className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+										>
+											Edit Trip
+										</button>
+										<button
+											onClick={() => setShowDeleteTripModal(true)}
+											className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+										>
+											Delete Trip
+										</button>
+									</>
+								)}
+							</div>
 							<div className="text-sm text-gray-600 bg-gray-100 rounded-lg px-4 py-3">
 								<p>
 									<span className="font-semibold text-gray-700">Start:</span> {formatDate(trip.startDate)}
@@ -524,6 +559,11 @@ const TripDetail: React.FC = () => {
 					onClose={() => setIsAddMemberModalOpen(false)}
 					onMemberAdded={refreshMembers}
 				/>
+				<ShareTripModal
+					tripId={trip.id}
+					isOpen={isShareModalOpen}
+					onClose={() => setIsShareModalOpen(false)}
+				/>
 				<ManageParticipantsModal
 					tripId={trip.id}
 					participants={participants}
@@ -548,6 +588,47 @@ const TripDetail: React.FC = () => {
 					onClose={() => setExpenseToDelete(null)}
 					onDeleted={handleExpenseDeleted}
 				/>
+
+				{showDeleteTripModal && (
+					<div
+						className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+						role="dialog"
+						aria-modal="true"
+						aria-labelledby="delete-trip-dialog-title"
+					>
+						<div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+							<h2 id="delete-trip-dialog-title" className="text-xl font-bold text-gray-900">Delete Trip</h2>
+							<p className="mt-2 text-gray-600">
+								Are you sure you want to delete{' '}
+								<span className="font-semibold">{trip.name}</span>? This will permanently remove the trip and all its data.
+							</p>
+							<p className="mt-1 text-sm text-gray-500">This cannot be undone.</p>
+							{deleteTripError && (
+								<div className="mt-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+									{deleteTripError}
+								</div>
+							)}
+							<div className="mt-6 flex justify-end gap-3">
+								<button
+									type="button"
+									disabled={isDeletingTrip}
+									onClick={() => { setShowDeleteTripModal(false); setDeleteTripError(''); }}
+									className="rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+								>
+									Cancel
+								</button>
+								<button
+									type="button"
+									onClick={handleDeleteTrip}
+									disabled={isDeletingTrip}
+									className="rounded-lg bg-red-600 px-4 py-2 font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+								>
+									{isDeletingTrip ? 'Deleting...' : 'Delete'}
+								</button>
+							</div>
+						</div>
+					</div>
+				)}
 			</main>
 		</div>
 	);

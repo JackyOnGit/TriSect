@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isTripCreator(tripId) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/trips/$(tripId)).data.createdBy == request.auth.uid;
+    }
+
+    function isTripMember(tripId) {
+      return isSignedIn() && (
+        get(/databases/$(database)/documents/trips/$(tripId)).data.createdBy == request.auth.uid ||
+        exists(/databases/$(database)/documents/trips/$(tripId)/members/$(request.auth.uid))
+      );
+    }
+
+    // ─── Users ───────────────────────────────────────────────────────────────
+    // Any authenticated user can read other user profiles (needed for member
+    // search / invite flows). Only the owner can write their own profile.
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // ─── Trips ───────────────────────────────────────────────────────────────
+    match /trips/{tripId} {
+      // Trip creator and members can read.
+      allow read: if isSignedIn() && (
+        resource.data.createdBy == request.auth.uid ||
+        exists(/databases/$(database)/documents/trips/$(tripId)/members/$(request.auth.uid))
+      );
+      // Any authenticated user can create a trip, provided they set themselves
+      // as the creator. This enforces that createdBy == the caller's uid.
+      allow create: if isSignedIn() &&
+        request.resource.data.createdBy == request.auth.uid;
+      // Only the trip creator can edit or delete the trip.
+      allow update, delete: if isSignedIn() &&
+        resource.data.createdBy == request.auth.uid;
+
+      // ── Members subcollection ─────────────────────────────────────────────
+      match /members/{memberId} {
+        // Trip members can read all members; an authenticated user can always
+        // read their own doc (needed so the join transaction can check whether
+        // they are already a member before creating the doc).
+        allow read: if isTripMember(tripId) || (isSignedIn() && memberId == request.auth.uid);
+        // Creator can add anyone; a user can add themselves (via invite link).
+        allow create: if isSignedIn() && (
+          isTripCreator(tripId) ||
+          (memberId == request.auth.uid &&
+           request.resource.data.userId == request.auth.uid)
+        );
+        allow update: if isTripCreator(tripId);
+        // Creator can remove anyone; members can remove themselves.
+        allow delete: if isSignedIn() && (
+          isTripCreator(tripId) || memberId == request.auth.uid
+        );
+      }
+
+      // ── Participants ──────────────────────────────────────────────────────
+      match /participants/{participantId} {
+        allow read, write: if isTripMember(tripId);
+      }
+
+      // ── Category distributions ────────────────────────────────────────────
+      match /categoryDistributions/{distId} {
+        allow read, write: if isTripMember(tripId);
+      }
+
+      // ── Expenses ──────────────────────────────────────────────────────────
+      match /expenses/{expenseId} {
+        allow read, write: if isTripMember(tripId);
+      }
+
+      // ── Invite links (subcollection under trips) ──────────────────────────
+      // Any authenticated user can read invite links so that the join flow
+      // can validate a code without the user being a member yet.
+      match /inviteLinks/{inviteId} {
+        allow read: if isSignedIn();
+        allow create, delete: if isTripCreator(tripId);
+        // Trip creator can update any field; any authenticated user may
+        // increment currentUses by exactly 1 (used by the join transaction).
+        allow update: if isTripCreator(tripId) || (
+          isSignedIn() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentUses']) &&
+          request.resource.data.currentUses == resource.data.currentUses + 1
+        );
+      }
+    }
+
+    // ─── Invite codes (top-level lookup collection) ───────────────────────────
+    // Readable by any authenticated user so the join flow can resolve a code
+    // to a tripId. Written by authenticated users during invite generation /
+    // revocation (server-side validation happens in the app transaction).
+    match /inviteCodes/{codeId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+    }
+
+    // ─── CollectionGroup: members ─────────────────────────────────────────────
+    // Allows getUserTrips() to query across ALL members subcollections for
+    // documents belonging to the current user.
+    // The query uses where('userId', '==', uid) so the rule must check the
+    // userId *field* (not the document ID) to be satisfiable by that query.
+    match /{path=**}/members/{memberId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+  }
+}
