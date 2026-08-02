@@ -103,10 +103,11 @@ service cloud.firestore {
 
     // ─── CollectionGroup: members ─────────────────────────────────────────────
     // Allows getUserTrips() to query across ALL members subcollections for
-    // documents belonging to the current user (document ID == userId).
-    // This rule is evaluated for collectionGroup queries on "members".
+    // documents belonging to the current user.
+    // The query uses where('userId', '==', uid) so the rule must check the
+    // userId *field* (not the document ID) to be satisfiable by that query.
     match /{path=**}/members/{memberId} {
-      allow read: if isSignedIn() && request.auth.uid == memberId;
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
   }
 }
