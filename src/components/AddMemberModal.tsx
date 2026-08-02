@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { addMemberToTrip } from '../services/trips';
-import { searchUsersByEmail, UserSearchResult } from '../services/users';
+import { searchCoMembersByEmail, UserSearchResult } from '../services/users';
+import { useAuth } from '../hooks/useAuth';
 
 type MemberRole = 'Adult' | 'Kid' | 'Baby';
 
@@ -17,6 +18,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
 	onClose,
 	onMemberAdded,
 }) => {
+	const { user } = useAuth();
 	const [searchEmail, setSearchEmail] = useState('');
 	const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
 	const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(null);
@@ -67,7 +69,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
 			setError('');
 
 			try {
-				const results = await searchUsersByEmail(trimmedEmail);
+				const results = await searchCoMembersByEmail(user?.uid ?? '', trimmedEmail);
 				if (!isCancelled) {
 					setSearchResults(results);
 				}
@@ -88,7 +90,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
 			isCancelled = true;
 			window.clearTimeout(timeoutId);
 		};
-	}, [isOpen, searchEmail, selectedUser]);
+	}, [isOpen, searchEmail, selectedUser, user]);
 
 	const handleSelectUser = (user: UserSearchResult) => {
 		setSelectedUser(user);
@@ -178,7 +180,9 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
 					{!loading && !selectedUser && searchEmail.trim().length >= 2 && (
 						<div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200">
 							{searchResults.length === 0 ? (
-								<p className="px-4 py-3 text-sm text-gray-500">No users found for this email.</p>
+								<p className="px-4 py-3 text-sm text-gray-500">
+									No known co-members match this search. To add someone new, share an invite link with them instead.
+								</p>
 							) : (
 								<ul>
 									{searchResults.map((userResult) => (
