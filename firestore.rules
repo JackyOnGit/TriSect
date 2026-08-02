@@ -81,7 +81,14 @@ service cloud.firestore {
       // can validate a code without the user being a member yet.
       match /inviteLinks/{inviteId} {
         allow read: if isSignedIn();
-        allow create, update, delete: if isTripCreator(tripId);
+        allow create, delete: if isTripCreator(tripId);
+        // Trip creator can update any field; any authenticated user may
+        // increment currentUses by exactly 1 (used by the join transaction).
+        allow update: if isTripCreator(tripId) || (
+          isSignedIn() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentUses']) &&
+          request.resource.data.currentUses == resource.data.currentUses + 1
+        );
       }
     }
 
