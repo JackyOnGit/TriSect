@@ -1,5 +1,12 @@
 import { CategoryDistribution, Expense, Participant, Settlement } from '../types';
 
+export interface ParticipantCategoryTotals {
+  paidByCategory: Record<string, number>;
+  shareByCategory: Record<string, number>;
+  totalPaid: number;
+  totalShare: number;
+}
+
 const normalizeCategoryName = (value?: string | null) => value?.trim().toLowerCase() ?? '';
 
 const isHousingCategory = (value?: string | null) => {
@@ -22,6 +29,13 @@ const getCategoryDistributionForExpense = (
     (distribution) =>
       normalizeCategoryName(distribution.category) === normalizeCategoryName(expense.category)
   );
+};
+
+const getExpenseCategoryLabel = (
+  expense: Expense,
+  categoryDistributions: CategoryDistribution[]
+) => {
+  return getCategoryDistributionForExpense(expense, categoryDistributions)?.category ?? expense.category;
 };
 
 /**
@@ -194,4 +208,43 @@ export const calculateBalances = (
   });
 
   return balanceMap;
+};
+
+export const calculateParticipantCategoryTotals = (
+  expenses: Expense[],
+  participants: Participant[],
+  categoryDistributions: CategoryDistribution[]
+): Map<string, ParticipantCategoryTotals> => {
+  const totals = new Map<string, ParticipantCategoryTotals>();
+
+  participants.forEach((participant) => {
+    totals.set(participant.id, {
+      paidByCategory: {},
+      shareByCategory: {},
+      totalPaid: 0,
+      totalShare: 0,
+    });
+  });
+
+  expenses.forEach((expense) => {
+    const category = getExpenseCategoryLabel(expense, categoryDistributions) || 'Uncategorized';
+    const payerTotals = totals.get(expense.paidByParticipant);
+
+    if (payerTotals) {
+      payerTotals.paidByCategory[category] = (payerTotals.paidByCategory[category] ?? 0) + expense.amount;
+      payerTotals.totalPaid += expense.amount;
+    }
+
+    const shares = computeShares(expense, participants, categoryDistributions);
+    shares.forEach((share, participantId) => {
+      const participantTotals = totals.get(participantId);
+      if (!participantTotals) return;
+
+      participantTotals.shareByCategory[category] =
+        (participantTotals.shareByCategory[category] ?? 0) + share;
+      participantTotals.totalShare += share;
+    });
+  });
+
+  return totals;
 };
