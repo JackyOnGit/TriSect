@@ -1,11 +1,29 @@
 {
   "name": "TriSect",
   "short_name": "TriSect",
+  "id": "/",
   "description": "Split expenses fairly on group trips",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#ffffff",
   "theme_color": "#3b82f6",
+  "categories": ["travel", "finance", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Open your trip dashboard",
+      "url": "/dashboard"
+    },
+    {
+      "name": "Create trip",
+      "short_name": "New trip",
+      "description": "Start a new shared trip budget",
+      "url": "/trip/new"
+    }
+  ],
   "icons": [
     {
       "src": "/icon-192.png",

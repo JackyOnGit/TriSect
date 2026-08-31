@@ -12,6 +12,7 @@ import EditTrip from './pages/EditTrip';
 import EditExpense from './pages/EditExpense';
 import JoinTrip from './pages/JoinTrip';
 import NotFound from './pages/NotFound';
+import PwaInstallPrompt from './components/PwaInstallPrompt';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -33,6 +34,7 @@ const App = () => {
   return (
     <Router>
       <AuthProvider>
+        <PwaInstallPrompt />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
